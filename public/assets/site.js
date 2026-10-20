@@ -5,7 +5,7 @@
   // ---------- data ----------
   const ICON = {
     'All': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    'Waste removal': 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 21a2 2 0 100-4 2 2 0 000 4zM17 21a2 2 0 100-4 2 2 0 000 4z',
+    'Emergency': 'M12 3l10 18H2zM12 10v5M12 18h.01',
     'Plumber': 'M3 9h9a4 4 0 014 4v2M8 9V5M5 5h6M16 19v2',
     'Electrician': 'M13 2L4 14h7l-1 8 9-12h-7z',
     'Roofer': 'M2 13l10-8 10 8M5 11v9h14v-9',
@@ -13,15 +13,17 @@
     'Gardener': 'M12 21v-8M12 13c0-4-3-6-7-6 0 4 3 6 7 6zM12 11c0-3 2-5 6-5 0 3-2 5-6 5zM7 21h10',
     'Painter / Decorator': 'M5 4h12v5H5zM17 6h2v6h-7v3M11 15h2v6h-2z',
     'Landscaper': 'M12 22v-6M12 16a6 6 0 006-6c0-4-3-7-6-8-3 1-6 4-6 8a6 6 0 006 6z',
+    'Waste Management': 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 21a2 2 0 100-4 2 2 0 000 4zM17 21a2 2 0 100-4 2 2 0 000 4z',
     'Carpenter': 'M14 6l4 4M3 21l9-9M11 5l4-2 6 6-2 4z',
     'Plasterer': 'M3 14h13l5-5H8zM12 14v3M10 17h4v4h-4z',
-    'Driveways / Patios': 'M8 3L4 21M16 3l4 18M12 5v3M12 11v3M12 17v3',
+    'Driveways / Patios / Paths': 'M8 3L4 21M16 3l4 18M12 5v3M12 11v3M12 17v3',
     'Fencing / Gates': 'M5 21V6l2-3 2 3v15M15 21V6l2-3 2 3v15M3 10h18M3 16h18',
     'Tree Surgeon': 'M12 22V13M6 13h12L12 3z',
     'Bathrooms': 'M3 12h18v3a5 5 0 01-5 5H8a5 5 0 01-5-5zM6 12V6a2 2 0 014 0M7 20l-1 2M17 20l1 2',
-    'Tiler': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    'Tiler - Tiling': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
     'Central Heating': 'M5 5v14M9 5v14M13 5v14M17 5v14M3 19h18'
   };
+
   const TRADES = Object.keys(ICON).filter(t => t !== 'All');
   const SHARE = 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13';
 
@@ -260,11 +262,11 @@
   }
   function soon(trade) {
     return `<article class="card soon">
-      <button class="thumb" type="button" data-waitlist="trade" data-trade="${esc(trade)}" aria-label="Are you a ${esc(trade)}? Join the waiting list">
-        ${svg(ICON[trade] || ICON.All, 34)}<span>Be the first<br>${esc(trade)}<br>on SnapTheJob</span>
+      <button class="thumb" type="button" data-waitlist="trade" data-trade="${esc(trade)}" aria-label="${esc(trade)}: join the trade waiting list">
+        ${svg(ICON[trade] || ICON.All, 34)}<span>${esc(trade)}<br><small style="font-weight:600">Be the first on SnapTheJob</small></span>
       </button>
       <div class="meta"><div style="min-width:0"><span class="t">${esc(trade)}</span><span class="s">Coming soon</span></div></div>
-      <button class="btn" type="button" data-waitlist="trade" data-trade="${esc(trade)}">I'm a ${esc(trade.split(' /')[0].toLowerCase())}</button>
+      <button class="btn" type="button" data-waitlist="trade" data-trade="${esc(trade)}">Join as a trade</button>
     </article>`;
   }
   function render() {
@@ -273,7 +275,7 @@
       (!state.q || (j.title + ' ' + j.biz + ' ' + j.trade + ' ' + j.services.join(' ')).toLowerCase().includes(state.q)));
     let html = jobs.map(card).join('');
     if (state.trade === 'All' && !state.q) {
-      html += ['Roofer', 'Bathrooms', 'Builder', 'Driveways / Patios', 'Electrician', 'Plumber', 'Landscaper', 'Painter / Decorator', 'Fencing / Gates', 'Tree Surgeon'].map(soon).join('');
+      html += ['Emergency', 'Plumber', 'Electrician', 'Roofer', 'Builder', 'Gardener', 'Painter / Decorator', 'Landscaper', 'Carpenter', 'Driveways / Patios / Paths'].map(soon).join('');
     } else if (!jobs.length) {
       html = state.q
         ? `<div class="empty"><b class="disp" style="font-size:22px">No jobs match "${esc(state.q)}" yet</b><p class="small">We're adding trades every week.</p><button class="btn btn-red" type="button" data-waitlist="customer">Get on the quotes waiting list</button></div>`
@@ -334,8 +336,8 @@
     <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
     <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}Get 3 quotes</button>
     <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}I'm a trade</button>
-    <div class="vw-side-h">Popular trades</div>
-    ${['Waste removal', 'Plasterer', 'Roofer', 'Builder', 'Plumber', 'Electrician', 'Bathrooms', 'Landscaper'].map(t => `<a href="/?trade=${encodeURIComponent(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
+    <div class="vw-side-h">Trades</div>
+    ${TRADES.map(t => `<a href="/?trade=${encodeURIComponent(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
   </nav>
   <div class="vw-main">
     <div class="vw-stage" id="vwStage">
