@@ -214,7 +214,7 @@
   });
 
   // ---------- home feed ----------
-  const state = { trade: 'All', q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
+  const state = { trade: (new URLSearchParams(location.search).get('trade') && ICON[new URLSearchParams(location.search).get('trade')]) ? new URLSearchParams(location.search).get('trade') : 'All', q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
   try { state.view = localStorage.getItem('stj-view') || 'grid'; } catch (e) {}
 
   function card(j) {
@@ -301,6 +301,13 @@
     <button class="vw-x" type="button" id="vwClose" aria-label="Back to jobs">${svg('M15 18l-6-6 6-6', 26, 'currentColor')}</button>
     <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="word"><b class="disp">Snap<span class="red">The</span>Job</b></span></a>
   </div>
+  <nav class="vw-side" aria-label="Browse">
+    <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
+    <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}Get 3 quotes</button>
+    <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}I'm a trade</button>
+    <div class="vw-side-h">Popular trades</div>
+    ${['Waste removal', 'Plasterer', 'Roofer', 'Builder', 'Plumber', 'Electrician', 'Bathrooms', 'Landscaper'].map(t => `<a href="/?trade=${encodeURIComponent(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
+  </nav>
   <div class="vw-main">
     <div class="vw-stage" id="vwStage">
       <video id="vwVideo" playsinline preload="auto"></video>
@@ -313,7 +320,6 @@
     <div class="vw-rail">
       <button class="vw-act vw-quote" type="button" id="vwQuote" data-waitlist="customer"><span>${svg('M4 5h16v11H8l-4 4z', 24, '#fff')}</span>Get a quote</button>
       <button class="vw-act" type="button" id="vwShare"><span>${svg('M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6', 24, 'currentColor')}</span>Share</button>
-      <a class="vw-act" id="vwPage" href="#"><span class="av" id="vwAv2"></span>Business</a>
     </div>
   </div>
   <div class="vw-navs">
@@ -329,10 +335,10 @@
   function show(i) {
     idx = (i + list.length) % list.length;
     const j = list[idx];
-    vid.src = j.video; vid.poster = j.cover; vid.setAttribute('aria-label', j.alt);
-    $('#vwAv').textContent = $('#vwAv2').textContent = j.initials;
+    vid.src = j.playVideo || j.video; vid.poster = j.playCover || j.cover; vid.setAttribute('aria-label', j.alt);
+    $('#vwAv').textContent = j.initials;
     $('#vwName').textContent = j.biz;
-    $('#vwBiz').href = $('#vwPage').href = '/job?j=' + j.slug;
+    $('#vwBiz').href = '/job?j=' + j.slug;
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
     const s = $('#vwShare'); s.dataset.share = '/job?j=' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover;

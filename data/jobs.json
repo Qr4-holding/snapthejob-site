@@ -1,14 +1,53 @@
 [
-  {
-    "slug": "room-re-plaster", "title": "Full room re-plaster", "biz": "PS Plastering", "initials": "PS", "trade": "Plasterer",
-    "video": "/media/ps-plastering.mp4", "cover": "/media/ps-plastering.jpg", "dur": "0:15", "stages": ["BEFORE", "DURING", "AFTER"], "voice": true,
-    "services": ["Re-plastering", "Skimming", "Ceilings", "Patch repairs", "Artex removal"],
-    "alt": "Before, during and after: bare brick and blown plaster, then smooth new plaster"
-  },
-  {
-    "slug": "garden-house-clearance", "title": "Drive cleared: sofa, carpet and bags", "biz": "Your Waste Removal", "initials": "YW", "trade": "Waste removal",
-    "video": "/media/waste-clearance.mp4", "cover": "/media/waste-clearance.jpg", "dur": "0:09", "stages": ["BEFORE", "AFTER"], "voice": false,
-    "services": ["House clearance", "Garden waste", "Trade waste", "Garage clearance", "Furniture removal"],
-    "alt": "Before and after: a driveway piled with a sofa and rubbish, then cleared"
-  }
+ {
+  "slug": "room-re-plaster",
+  "title": "Full room re-plaster",
+  "biz": "PS Plastering",
+  "initials": "PS",
+  "trade": "Plasterer",
+  "video": "/media/ps-plastering.mp4",
+  "cover": "/media/ps-plastering.jpg",
+  "dur": "0:15",
+  "stages": [
+   "BEFORE",
+   "DURING",
+   "AFTER"
+  ],
+  "voice": true,
+  "services": [
+   "Re-plastering",
+   "Skimming",
+   "Ceilings",
+   "Patch repairs",
+   "Artex removal"
+  ],
+  "alt": "Before, during and after: bare brick and blown plaster, then smooth new plaster",
+  "playVideo": "/media/ps-plastering-site.mp4",
+  "playCover": "/media/ps-plastering-site.jpg"
+ },
+ {
+  "slug": "garden-house-clearance",
+  "title": "Drive cleared: sofa, carpet and bags",
+  "biz": "Your Waste Removal",
+  "initials": "YW",
+  "trade": "Waste removal",
+  "video": "/media/waste-clearance.mp4",
+  "cover": "/media/waste-clearance.jpg",
+  "dur": "0:09",
+  "stages": [
+   "BEFORE",
+   "AFTER"
+  ],
+  "voice": false,
+  "services": [
+   "House clearance",
+   "Garden waste",
+   "Trade waste",
+   "Garage clearance",
+   "Furniture removal"
+  ],
+  "alt": "Before and after: a driveway piled with a sofa and rubbish, then cleared",
+  "playVideo": "/media/waste-clearance-site.mp4",
+  "playCover": "/media/waste-clearance-site.jpg"
+ }
 ]
