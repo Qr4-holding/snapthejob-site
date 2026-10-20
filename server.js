@@ -236,7 +236,7 @@ const slugify = t => String(t).toLowerCase().replace(/&/g, 'and').replace(/[^a-z
 function listBackups() {
   try { return fs.readdirSync(BACKUP_DIR).filter(f => /^stj-[\d-]+\.sql\.gz$/.test(f)).sort().reverse(); } catch (e) { return []; }
 }
-app.get('/admin', auth, async (req, res) => {
+app.get('/admin', auth, async (req, res, next) => { try {
   const { rows } = await pool.query('SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 1000');
   const msgs = (await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 500')).rows;
   const pf = (await pool.query('SELECT target, count(*)::int n FROM push_follows GROUP BY target')).rows;
@@ -246,7 +246,7 @@ app.get('/admin', auth, async (req, res) => {
   const nameOf = t => t === 'snapthejob' ? 'SnapTheJob (everything)' : (JOBS.find(j => slugify(j.biz) === t) || {}).biz || t;
   const ftr = targets.map(t => `<tr><td>${esc(nameOf(t))}</td><td>${(pf.find(r => r.target === t) || { n: 0 }).n}</td><td>${(ef.find(r => r.target === t) || { n: 0 }).n}</td></tr>`).join('');
   const backups = listBackups();
-  const days = (await pool.query(`SELECT to_char(d, 'YYYY-MM-DD') day,
+  const days = (await pool.query(`SELECT to_char(d, 'YYYY-MM-DD') AS day,
       (SELECT count(DISTINCT visitor) FROM events WHERE ts::date = d)::int visitors,
       (SELECT count(*) FROM events WHERE ts::date = d AND type='view')::int views,
       (SELECT count(*) FROM events WHERE ts::date = d AND type='play')::int plays,
@@ -323,7 +323,7 @@ ${statsHtml}
 <button type="submit">Change password</button>
 </form>
 </body></html>`);
-});
+} catch (e) { next(e); } });
 const form = express.urlencoded({ extended: false, limit: '10kb' });
 app.post('/admin/notify', auth, sameOrigin, form, async (req, res) => {
   const target = clean(req.body.target, 60);
@@ -461,6 +461,8 @@ app.use('/media', express.static(path.join(__dirname, 'public/media'), { maxAge:
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1m' }));
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public/index.html')));
 
+process.on('unhandledRejection', e => console.error('Unhandled:', e && e.message));
+app.use((err, req, res, next) => { console.error(err); res.status(500).send('Something went wrong. Please try again.'); });
 initDb().then(async () => {
   const r = await pool.query("SELECT value FROM settings WHERE key='admin_hash'");
   if (r.rows[0]) adminHash = r.rows[0].value;
