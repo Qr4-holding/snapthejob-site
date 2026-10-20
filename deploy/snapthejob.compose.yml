@@ -6,7 +6,7 @@
 services:
   web:
     image: node:22-alpine
-    command: ["sh", "-c", "apk add --no-cache git >/dev/null && rm -rf /app && git clone --depth 1 https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
+    command: ["sh", "-c", "apk add --no-cache git ffmpeg >/dev/null && rm -rf /app && git clone --depth 1 https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgres://stj:${DB_PASSWORD}@db:5432/stj
@@ -16,6 +16,7 @@ services:
       - VAPID_PRIVATE=${VAPID_PRIVATE}
     volumes:
       - backups:/backups:ro
+      - media:/data/media
     labels:
       caddy_0: ${SITE_HOSTS}
       caddy_0.reverse_proxy: "{{upstreams 3000}}"
@@ -57,3 +58,4 @@ networks:
 volumes:
   pgdata: {}
   backups: {}
+  media: {}

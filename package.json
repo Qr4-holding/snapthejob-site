@@ -1,6 +1,6 @@
 {
   "name": "snapthejob-site",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "SnapTheJob public site and waiting list",
   "main": "server.js",
@@ -13,6 +13,7 @@
   "dependencies": {
     "express": "4.21.2",
     "pg": "8.13.1",
-    "web-push": "3.6.7"
+    "web-push": "3.6.7",
+    "multer": "2.4.0"
   }
 }
