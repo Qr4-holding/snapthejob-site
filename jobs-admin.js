@@ -227,6 +227,7 @@ ${thumbChooser('')}
 <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
 <img src="${esc(r.cover || '')}" alt="Current thumbnail" style="width:150px;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#eee">
 <form class="card" method="post" action="/admin/jobs/${r.id}" enctype="multipart/form-data" style="flex:1;min-width:280px">
+<label>Replace the video (optional)<input type="file" name="video" accept="video/*"></label>
 ${jobFields(r)}
 <div class="checks"><label><input type="checkbox" name="hidden" ${r.hidden ? 'checked' : ''}> Hide from the site</label></div>
 ${thumbChooser(r.video)}
@@ -234,16 +235,28 @@ ${thumbChooser(r.video)}
 </form></div>
 <h2>Delete this job</h2>
 <form method="post" action="/admin/jobs/${r.id}/delete" onsubmit="return confirm('Delete this job and its video for good?')"><button class="del" type="submit">Delete job</button></form>
-${pickerScript}`, req.query.m === 'saved' ? 'Saved.' : ''));
+${pickerScript}`, req.query.m === 'saved' ? (r.status === 'processing' ? 'Saved. The new video is being prepared and replaces the old one in a minute or two.' : 'Saved.') : ''));
   } catch (e) { next(e); } });
 
-  app.post('/admin/jobs/:id', auth, sameOrigin, upload.fields([{ name: 'thumb', maxCount: 1 }]), async (req, res, next) => { try {
-    const id = parseInt(req.params.id, 10) || 0, b = req.body || {}, th = req.files && req.files.thumb && req.files.thumb[0];
+  app.post('/admin/jobs/:id', auth, sameOrigin, upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumb', maxCount: 1 }]), async (req, res, next) => { try {
+    const id = parseInt(req.params.id, 10) || 0, b = req.body || {}, th = req.files && req.files.thumb && req.files.thumb[0], vid = req.files && req.files.video && req.files.video[0];
     const r = (await pool.query('SELECT * FROM jobs WHERE id=$1', [id])).rows[0];
-    if (!r) { if (th) fs.unlink(th.path, () => {}); return res.redirect(303, '/admin/jobs'); }
+    if (!r) { for (const f of [th, vid]) if (f) fs.unlink(f.path, () => {}); return res.redirect(303, '/admin/jobs'); }
     const title = clean(b.title, 80) || r.title, biz = clean(b.biz, 80) || r.biz, trade = TRADES.includes(b.trade) ? b.trade : r.trade;
     await pool.query(`UPDATE jobs SET title=$1, biz=$2, initials=$3, trade=$4, description=$5, services=$6, stages=$7, voice=$8, demo=$9, hidden=$10 WHERE id=$11`,
       [title, biz, initialsOf(biz), trade, clean(b.description, 400), list(b.services), stagesOf(b).length ? stagesOf(b) : r.stages, !!b.voice, !!b.demo, !!b.hidden, id]);
+    if (vid) {
+      // new video: convert it in the background, then remove the old files
+      await pool.query(`UPDATE jobs SET status='processing' WHERE id=$1`, [id]);
+      const keepThumb = th && b.thumbmode !== 'auto' ? th.path : null;
+      if (th && !keepThumb) fs.unlink(th.path, () => {});
+      processVideo(id, vid.path, keepThumb).then(async () => {
+        const now = (await pool.query('SELECT status FROM jobs WHERE id=$1', [id])).rows[0];
+        if (now && now.status === 'ready') for (const u of new Set([r.video, r.play_video, r.cover, r.play_cover])) removeFile(u);
+      });
+      await reload();
+      return res.redirect(303, `/admin/jobs/${id}?m=saved`);
+    }
     if (th && b.thumbmode !== 'auto') {
       const out = path.join(JOB_DIR, `${id}-${crypto.randomBytes(4).toString('hex')}.jpg`);
       try {
