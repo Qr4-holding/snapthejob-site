@@ -7,7 +7,7 @@ const fs = require('fs');
 const webpush = require('web-push');
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+let ADMIN_USER = process.env.ADMIN_USER || 'admin'; // the owner can change it in /admin
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
@@ -244,7 +244,9 @@ app.get('/admin', auth, async (req, res, next) => { try {
   const people = (await pool.query('SELECT (SELECT count(DISTINCT endpoint) FROM push_follows)::int p, (SELECT count(DISTINCT email) FROM email_follows)::int e')).rows[0];
   const targets = [...new Set(['snapthejob', ...JOBS.map(j => slugify(j.biz)), ...pf.map(r => r.target), ...ef.map(r => r.target)])];
   const nameOf = t => t === 'snapthejob' ? 'SnapTheJob (everything)' : (JOBS.find(j => slugify(j.biz) === t) || {}).biz || t;
-  const ftr = targets.map(t => `<tr><td>${esc(nameOf(t))}</td><td>${(pf.find(r => r.target === t) || { n: 0 }).n}</td><td>${(ef.find(r => r.target === t) || { n: 0 }).n}</td></tr>`).join('');
+  const ftr = targets.map(t => { const n = (pf.find(r => r.target === t) || { n: 0 }).n; return `<tr><td>${esc(nameOf(t))}</td><td>${n}</td><td>${(ef.find(r => r.target === t) || { n: 0 }).n}</td><td>${n ? `<form method="post" action="/admin/delete" onsubmit="return confirm('Remove all phone followers of this business? They will stop getting alerts.')" style="margin:0"><input type="hidden" name="what" value="phones"><input type="hidden" name="id" value="${esc(t)}"><button class="del" type="submit">Remove phone followers</button></form>` : ''}</td></tr>`; }).join('');
+  const emails = (await pool.query('SELECT email, target, created_at FROM email_follows ORDER BY created_at DESC LIMIT 500')).rows;
+  const etr = emails.map(e => `<tr><td>${when(e.created_at)}</td><td>${esc(e.email)}</td><td>${esc(nameOf(e.target))}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this email follower?')" style="margin:0"><input type="hidden" name="what" value="email"><input type="hidden" name="id" value="${esc(e.email + "|" + e.target)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
   const backups = listBackups();
   const days = (await pool.query(`SELECT to_char(d, 'YYYY-MM-DD') AS day,
       (SELECT count(DISTINCT visitor) FROM events WHERE ts::date = d)::int visitors,
@@ -275,15 +277,15 @@ ${mini(shareApps, 'Shared to', r => r.detail)}
 ${mini(devices, 'Device', r => r.device)}
 </div>
 <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Day by day</summary><div class="w"><table><thead><tr><th>Day</th><th>Visitors</th><th>Page views</th><th>Watched</th><th>Shares</th><th>Quote clicks</th><th>Follows</th><th>Sign-ups</th></tr></thead><tbody>${days.map(d => `<tr><td>${d.day}</td><td>${d.visitors}</td><td>${d.views}</td><td>${d.plays}</td><td>${d.shares}</td><td>${d.quotes}</td><td>${d.follows}</td><td>${d.signups}</td></tr>`).join('')}</tbody></table></div></details>`;
-  const flash = { sent: 'Notification sent.', pw: 'Password changed. Use the new one next time you sign in.', pwbad: 'Password not changed: current password wrong, or new ones did not match / too short (min 12 characters).' }[req.query.m] || '';
+  const flash = { sent: 'Notification sent.', pw: 'Sign-in details saved. Use them next time you sign in.', pwbad: 'Not saved: the current password was wrong, the username used other characters (letters, numbers, . _ @ - only), or the new passwords did not match or were under 12 characters.', deleted: 'Deleted.' }[req.query.m] || '';
   const sentInfo = req.query.m === 'sent' ? ` (${esc(req.query.n || 0)} phones)` : '';
   const when = d => esc(new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London' }));
-  const mtr = msgs.map(m => `<tr><td>${when(m.created_at)}</td><td>${esc(m.topic)}</td><td>${esc(m.name)}</td><td>${esc(m.email)}</td><td style="white-space:pre-wrap">${esc(m.message)}</td></tr>`).join('');
+  const mtr = msgs.map(m => `<tr><td>${when(m.created_at)}</td><td>${esc(m.topic)}</td><td>${esc(m.name)}</td><td>${esc(m.email)}</td><td style="white-space:pre-wrap">${esc(m.message)}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this message?')" style="margin:0"><input type="hidden" name="what" value="message"><input type="hidden" name="id" value="${esc(m.id)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
   const count = k => rows.filter(r => r.kind === k).length;
-  const tr = rows.map(r => `<tr><td>${when(r.created_at)}</td><td>${r.kind === 'trade' ? '<b>Trade</b>' : 'Customer'}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.business)}</td><td>${esc(r.trade)}</td><td>${esc(r.town)}</td><td>${esc(r.postcode)}</td><td>${esc(r.gallery)}</td><td>${esc(r.job)}</td><td>${esc(r.source_page)}</td></tr>`).join('');
+  const tr = rows.map(r => `<tr><td>${when(r.created_at)}</td><td>${r.kind === 'trade' ? '<b>Trade</b>' : 'Customer'}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.business)}</td><td>${esc(r.trade)}</td><td>${esc(r.town)}</td><td>${esc(r.postcode)}</td><td>${esc(r.gallery)}</td><td>${esc(r.job)}</td><td>${esc(r.source_page)}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this sign-up?')" style="margin:0"><input type="hidden" name="what" value="signup"><input type="hidden" name="id" value="${esc(r.id)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
   const opts = ['everyone', ...targets].map(t => `<option value="${esc(t)}">${t === 'everyone' ? 'Everyone who allowed alerts' : esc(nameOf(t)) + ' followers'}</option>`).join('');
   res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin · SnapTheJob</title>
-<style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}h1{margin:0 0 4px}h2{margin:28px 0 8px}.k{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.k div{border:1px solid #D9381E;border-radius:12px;padding:10px 16px}.k b{font-size:24px;display:block}a.b,button{display:inline-block;background:#D9381E;color:#fff;padding:10px 16px;border-radius:20px;text-decoration:none;font-weight:700;border:none;font:inherit;font-weight:700;cursor:pointer}.w{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;font-size:14px;min-width:600px}th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top}th{background:#FDF1EE}form.card{border:1px solid #F0B8AE;border-radius:14px;padding:14px;display:grid;gap:10px;max-width:560px}label{display:grid;gap:4px;font-weight:600;font-size:14px}input,select,textarea{font:inherit;padding:10px;border:1px solid #C9CBC5;border-radius:10px}.flash{background:#FDF1EE;border:1px solid #D9381E;border-radius:12px;padding:10px 14px;font-weight:600}.n{color:#5E6168;font-size:14px}</style></head>
+<style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}h1{margin:0 0 4px}h2{margin:28px 0 8px}.k{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.k div{border:1px solid #D9381E;border-radius:12px;padding:10px 16px}.k b{font-size:24px;display:block}a.b,button{display:inline-block;background:#D9381E;color:#fff;padding:10px 16px;border-radius:20px;text-decoration:none;font-weight:700;border:none;font:inherit;font-weight:700;cursor:pointer}.w{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;font-size:14px;min-width:600px}th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top}th{background:#FDF1EE}button.del{background:#fff;color:#A1260F;border:1px solid #F0B8AE;padding:6px 12px;font-size:13px}button.del:hover{background:#FDF1EE}form.card{border:1px solid #F0B8AE;border-radius:14px;padding:14px;display:grid;gap:10px;max-width:560px}label{display:grid;gap:4px;font-weight:600;font-size:14px}input,select,textarea{font:inherit;padding:10px;border:1px solid #C9CBC5;border-radius:10px}.flash{background:#FDF1EE;border:1px solid #D9381E;border-radius:12px;padding:10px 14px;font-weight:600}.n{color:#5E6168;font-size:14px}</style></head>
 <body><h1>SnapTheJob admin</h1>
 ${flash ? `<p class="flash">${esc(flash)}${sentInfo}</p>` : ''}
 <div class="k"><div><b>${rows.length}</b>Waiting list</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div><div><b>${msgs.length}</b>Messages</div><div><b>${people.p}</b>Phones with alerts on</div><div><b>${people.e}</b>Email followers</div></div>
@@ -291,10 +293,12 @@ ${flash ? `<p class="flash">${esc(flash)}${sentInfo}</p>` : ''}
 ${statsHtml}
 
 <h2>Contact messages</h2>
-<div class="w"><table><thead><tr><th>When</th><th>Topic</th><th>Name</th><th>Email</th><th>Message</th></tr></thead><tbody>${mtr || '<tr><td colspan="5">No messages yet.</td></tr>'}</tbody></table></div>
+<div class="w"><table><thead><tr><th>When</th><th>Topic</th><th>Name</th><th>Email</th><th>Message</th><th></th></tr></thead><tbody>${mtr || '<tr><td colspan="6">No messages yet.</td></tr>'}</tbody></table></div>
 
 <h2>Followers</h2>
-<div class="w"><table><thead><tr><th>Following</th><th>Phone alerts</th><th>Email</th></tr></thead><tbody>${ftr}</tbody></table></div>
+<div class="w"><table><thead><tr><th>Following</th><th>Phone alerts</th><th>Email</th><th></th></tr></thead><tbody>${ftr}</tbody></table></div>
+<h3 style="margin:16px 0 4px">Email followers</h3>
+<div class="w"><table><thead><tr><th>When</th><th>Email</th><th>Following</th><th></th></tr></thead><tbody>${etr || '<tr><td colspan="4">No email followers yet.</td></tr>'}</tbody></table></div>
 
 <h2>Send a phone notification</h2>
 <form class="card" method="post" action="/admin/notify">
@@ -308,19 +312,20 @@ ${statsHtml}
 
 <h2>Sign-ups</h2>
 <a class="b" href="/admin/waitlist.csv">Download as CSV</a>
-<div class="w"><table style="min-width:900px"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Email</th><th>Business</th><th>Trade</th><th>Town</th><th>Postcode</th><th>Old jobs</th><th>Job / notes</th><th>From page</th></tr></thead><tbody>${tr || '<tr><td colspan="11">No sign-ups yet.</td></tr>'}</tbody></table></div>
+<div class="w"><table style="min-width:900px"><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Email</th><th>Business</th><th>Trade</th><th>Town</th><th>Postcode</th><th>Old jobs</th><th>Job / notes</th><th>From page</th><th></th></tr></thead><tbody>${tr || '<tr><td colspan="12">No sign-ups yet.</td></tr>'}</tbody></table></div>
 
 <h2>Backups</h2>
 <p class="n">A full copy of the database is made every night and kept for 14 days. Download one now and then to keep a copy off the server.</p>
 <ul>${backups.map(f => `<li><a href="/admin/backup/${esc(f)}">${esc(f)}</a></li>`).join('') || '<li>The first backup appears after tonight.</li>'}</ul>
 
-<h2>Change admin password</h2>
+<h2>Sign-in details</h2>
 <form class="card" method="post" action="/admin/password">
-<input type="hidden" name="username" value="admin" autocomplete="username">
+<label>Username<input name="user" value="${esc(ADMIN_USER)}" autocomplete="username" minlength="3" maxlength="40" required></label>
 <label>Current password<input name="current" type="password" autocomplete="current-password" required></label>
-<label>New password (at least 12 characters)<input name="next" type="password" autocomplete="new-password" minlength="12" required></label>
-<label>New password again<input name="again" type="password" autocomplete="new-password" minlength="12" required></label>
-<button type="submit">Change password</button>
+<label>New password (leave blank to keep the current one; at least 12 characters)<input name="next" type="password" autocomplete="new-password" minlength="12"></label>
+<label>New password again<input name="again" type="password" autocomplete="new-password" minlength="12"></label>
+<button type="submit">Save sign-in details</button>
+<span class="n">After saving, your browser will ask you to sign in again with the new details.</span>
 </form>
 </body></html>`);
 } catch (e) { next(e); } });
@@ -335,10 +340,23 @@ app.post('/admin/notify', auth, sameOrigin, form, async (req, res) => {
 });
 app.post('/admin/password', auth, sameOrigin, form, async (req, res) => {
   const { current = '', next = '', again = '' } = req.body;
-  if (!checkPw(current) || next.length < 12 || next !== again) return res.redirect(303, '/admin?m=pwbad');
-  adminHash = hashPw(next);
-  await pool.query(`INSERT INTO settings (key, value) VALUES ('admin_hash', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [adminHash]);
+  const user = clean(req.body.user, 40);
+  if (!checkPw(current) || !/^[A-Za-z0-9._@-]{3,40}$/.test(user) || (next && (next.length < 12 || next !== again))) return res.redirect(303, '/admin?m=pwbad');
+  if (next) {
+    adminHash = hashPw(next);
+    await pool.query(`INSERT INTO settings (key, value) VALUES ('admin_hash', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [adminHash]);
+  }
+  ADMIN_USER = user;
+  await pool.query(`INSERT INTO settings (key, value) VALUES ('admin_user', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [user]);
   res.redirect(303, '/admin?m=pw');
+});
+app.post('/admin/delete', auth, sameOrigin, form, async (req, res) => {
+  const what = req.body.what, id = String(req.body.id || '');
+  if (what === 'signup') await pool.query('DELETE FROM waitlist WHERE id=$1', [parseInt(id, 10) || 0]);
+  else if (what === 'message') await pool.query('DELETE FROM messages WHERE id=$1', [parseInt(id, 10) || 0]);
+  else if (what === 'email') { const [email, target] = id.split('|'); await pool.query('DELETE FROM email_follows WHERE email=$1 AND target=$2', [email, target]); }
+  else if (what === 'phones' && TARGET.test(id)) await pool.query('DELETE FROM push_follows WHERE target=$1', [id]);
+  res.redirect(303, '/admin?m=deleted');
 });
 app.get('/admin/backup/:file', auth, (req, res) => {
   const f = req.params.file;
@@ -466,4 +484,6 @@ app.use((err, req, res, next) => { console.error(err); res.status(500).send('Som
 initDb().then(async () => {
   const r = await pool.query("SELECT value FROM settings WHERE key='admin_hash'");
   if (r.rows[0]) adminHash = r.rows[0].value;
+  const u = await pool.query("SELECT value FROM settings WHERE key='admin_user'");
+  if (u.rows[0]) ADMIN_USER = u.rows[0].value;
 }).then(() => app.listen(PORT, () => console.log('SnapTheJob on port ' + PORT))).catch(e => { console.error(e); process.exit(1); });
