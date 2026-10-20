@@ -1,0 +1,22 @@
+# Shared front door for every app on the VPS: HTTPS certificates + routing by domain.
+# Apps join the "web" network and add caddy labels.
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:2.9-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - CADDY_INGRESS_NETWORKS=web
+    networks:
+      - web
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+    restart: unless-stopped
+networks:
+  web:
+    name: web
+volumes:
+  caddy_data: {}

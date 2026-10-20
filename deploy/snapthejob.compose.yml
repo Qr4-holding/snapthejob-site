@@ -1,0 +1,35 @@
+# SnapTheJob site + its own PostgreSQL database.
+# Needs project environment: DB_PASSWORD, ADMIN_PASSWORD, SITE_HOSTS
+services:
+  web:
+    build: https://github.com/Qr4-holding/snapthejob-site.git#main
+    environment:
+      - DATABASE_URL=postgres://stj:${DB_PASSWORD}@db:5432/stj
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    labels:
+      caddy: ${SITE_HOSTS}
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+    networks:
+      - web
+      - internal
+    depends_on:
+      - db
+    restart: unless-stopped
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=stj
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=stj
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    restart: unless-stopped
+networks:
+  web:
+    external: true
+  internal: {}
+volumes:
+  pgdata: {}

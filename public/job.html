@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Job video · SnapTheJob</title>
+<meta name="description" content="Before and after videos of real jobs by UK trades. Watch the work, then get a quote.">
+<meta name="theme-color" content="#D9381E">
+<meta property="og:title" content="Job video · SnapTheJob">
+<meta property="og:description" content="Before and after videos of real jobs by UK trades. Watch the work, then get a quote.">
+<meta property="og:image" content="/media/ps-plastering.jpg">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="logo" href="/" aria-label="SnapTheJob home">
+<span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+<span class="word"><b class="disp">Snap<span class="red">The</span>Job</b><small class="disp"><span class="red">Before,</span> After, <span class="red">Share.</span></small></span>
+</a>
+<form class="search" id="searchForm" action="/" role="search">
+<label class="sr" for="q">Search jobs and trades</label>
+<input id="q" name="q" type="search" placeholder="Search: plasterer, clearance, roof…">
+<button type="submit" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+</form>
+<div class="actions">
+<button class="btn btn-red" type="button" data-waitlist="trade">I'm a trade</button>
+<button class="btn hide-s" type="button" data-waitlist="customer">Get 3 quotes</button>
+</div>
+</div></header>
+<main class="wrap">
+<section class="job" id="job"></section>
+<section style="padding-bottom:20px"><h2 class="disp" style="margin:0 0 14px;font-size:24px">More jobs</h2><div class="grid" id="more"></div></section>
+</main>
+<footer class="foot"><div class="wrap">
+<p style="margin:0 0 6px">Videos are posted by the businesses themselves. SnapTheJob hosts them but does not check, vouch for or endorse any work shown.</p>
+<p style="margin:0"><a href="/privacy">Privacy</a> · © 2026 SnapTheJob</p>
+</div></footer>
+<nav class="tabbar" aria-label="Main">
+<a href="/"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
+<button type="button" class="snap" data-waitlist="trade" aria-label="I'm a trade: snap a job"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+<button type="button" data-waitlist="customer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>Quotes</button>
+</nav>
+<script src="/assets/site.js"></script>
+</body>
+</html>
