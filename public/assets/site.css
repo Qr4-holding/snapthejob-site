@@ -207,3 +207,7 @@ button{font:inherit}
   .vw-side-h{font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:16px 12px 6px;border-top:1px solid var(--line);margin-top:10px}
   .vw-main{padding-left:256px}
 }
+.sh-vid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.sh-vid .sh-app{background:none;border:none;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:var(--ink)}
+.sh-note{margin:-4px 0 0;background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600}
+.vw-logo small{font-size:12px;margin-top:3px}

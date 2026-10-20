@@ -166,6 +166,12 @@
   <div class="sh-box" role="dialog" aria-modal="true" aria-labelledby="shTitle">
     <div class="sh-head"><b id="shTitle" class="disp">Share this job</b>
       <button class="x" type="button" data-shclose aria-label="Close">${svg('M6 6l12 12M18 6L6 18', 18, '#1F2124')}</button></div>
+    <div class="sh-vid" id="shVid">
+      <button class="sh-app" type="button" data-sv="Instagram"><span style="background:linear-gradient(45deg,#F58529,#DD2A7B 50%,#8134AF)">${svg('M4 4h16v16H4zM12 16a4 4 0 100-8 4 4 0 000 8zM17 7h.01', 24, '#fff')}</span>Instagram</button>
+      <button class="sh-app" type="button" data-sv="TikTok"><span style="background:#000">${svg('M14 4v10a4 4 0 11-4-4M14 4c0 3 2 5 5 5', 24, '#fff')}</span>TikTok</button>
+      <button class="sh-app" type="button" data-sv="the app you want to post to"><span style="background:#D9381E">${svg('M12 4v11M7 10l5 5 5-5M5 20h14', 24, '#fff')}</span>Save video</button>
+    </div>
+    <p class="sh-note" id="shNote" role="status" hidden></p>
     <div class="sh-grid" id="shGrid"></div>
     <div class="sh-copy"><input id="shUrl" readonly aria-label="Link to this job"><button class="btn btn-red" type="button" id="shCopy">Copy link</button></div>
     <button class="link" type="button" id="shMore" hidden>More options on this device</button>
@@ -173,10 +179,20 @@
 </div>`);
   const sh = $('#sh');
   let shLast = null, shData = null;
-  function openShare(path, title, img) {
+  let shFile = null;
+  function openShare(path, title, img, video) {
     const url = new URL(path, location.origin).href;
     const text = title + ' · Before, After, Share. on SnapTheJob';
-    shData = { url, title, text };
+    shData = { url, title, text, video, caption: `${title}. Watch it and get a quote on SnapTheJob: ${url} #BeforeAndAfter #SnapTheJob` };
+    $('#shVid').hidden = !video; $('#shNote').hidden = true;
+    // get the video file ready now, so the phone's own share (Instagram, TikTok…) opens straight away on tap
+    shFile = null;
+    if (video && navigator.canShare) {
+      fetch(video).then(r => r.blob()).then(b => {
+        const f = new File([b], (path.split('j=')[1] || 'snapthejob') + '.mp4', { type: 'video/mp4' });
+        if (navigator.canShare({ files: [f] })) shFile = f;
+      }).catch(() => {});
+    }
     $('#shGrid').innerHTML = NET.map(n => `<a class="sh-app" href="${esc(n.href(url, text, new URL(img || '/media/ps-plastering.jpg', location.origin).href))}" ${n.same ? '' : 'target="_blank" rel="noopener"'}><span style="background:${n.bg}">${n.mark}</span>${n.name}</a>`).join('');
     $('#shUrl').value = url;
     $('#shCopy').textContent = 'Copy link';
@@ -194,6 +210,19 @@
     catch (ex) { inp.select(); try { document.execCommand('copy'); } catch (e2) {} }
     $('#shCopy').textContent = 'Copied ✓';
   });
+  $('#shVid').addEventListener('click', async e => {
+    const b = e.target.closest('[data-sv]'); if (!b || !shData) return;
+    const note = $('#shNote'), app = b.dataset.sv;
+    if (shFile && !b.dataset.sv.startsWith('the app')) {
+      try { await navigator.share({ files: [shFile], text: shData.caption }); return; } catch (ex) { if (ex.name === 'AbortError') return; }
+    }
+    // laptop (or phone without file sharing): save the video and copy the caption
+    const a = document.createElement('a'); a.href = shData.video; a.download = (shData.url.split('j=')[1] || 'snapthejob') + '.mp4';
+    document.body.appendChild(a); a.click(); a.remove();
+    let copied = false; try { await navigator.clipboard.writeText(shData.caption); copied = true; } catch (ex) {}
+    note.textContent = `Video saved${copied ? ' and caption copied' : ''}. Open ${app}, upload the video from your downloads${copied ? ' and paste the caption' : ''}.`;
+    note.hidden = false;
+  });
   $('#shMore').addEventListener('click', () => {
     if (navigator.share && shData) navigator.share({ title: shData.title, text: shData.text, url: shData.url }).catch(() => {});
   });
@@ -201,7 +230,7 @@
     const b = e.target.closest('[data-share]');
     if (!b) return;
     e.preventDefault();
-    openShare(b.dataset.share, b.dataset.title || 'SnapTheJob', b.dataset.img);
+    openShare(b.dataset.share, b.dataset.title || 'SnapTheJob', b.dataset.img, b.dataset.video);
   });
 
   // search box: filter on the home page, or go home with the query
@@ -226,7 +255,7 @@
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
         <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
       <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
-      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
+      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
   }
   function soon(trade) {
@@ -287,7 +316,7 @@
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
-        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}">${svg(SHARE, 22)}Share this job</button>
+        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
         <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. SnapTheJob hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
       </div>`;
     const more = $('#more');
@@ -299,7 +328,7 @@
 <div class="vw" id="vw" hidden role="dialog" aria-modal="true" aria-label="Video player">
   <div class="vw-top">
     <button class="vw-x" type="button" id="vwClose" aria-label="Back to jobs">${svg('M15 18l-6-6 6-6', 26, 'currentColor')}</button>
-    <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="word"><b class="disp">Snap<span class="red">The</span>Job</b></span></a>
+    <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="word"><b class="disp">Snap<span class="red">The</span>Job</b><small class="disp"><span class="red">Before,</span> After, <span class="red">Share.</span></small></span></a>
   </div>
   <nav class="vw-side" aria-label="Browse">
     <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
@@ -341,7 +370,7 @@
     $('#vwBiz').href = '/job?j=' + j.slug;
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
-    const s = $('#vwShare'); s.dataset.share = '/job?j=' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover;
+    const s = $('#vwShare'); s.dataset.share = '/job?j=' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover; s.dataset.video = j.video;
     $('#vwPrev').hidden = $('#vwNext').hidden = list.length < 2;
     vid.play().catch(() => {});
   }
