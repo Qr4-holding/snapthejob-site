@@ -71,6 +71,14 @@ async function initDb(tries = 30) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (email, target)
       )`);
+      await pool.query(`CREATE TABLE IF NOT EXISTS events (
+        id BIGSERIAL PRIMARY KEY,
+        ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+        type TEXT NOT NULL,
+        path TEXT, job TEXT, detail TEXT, ref TEXT, device TEXT, visitor TEXT
+      )`);
+      await pool.query('CREATE INDEX IF NOT EXISTS events_ts ON events (ts)');
+      await pool.query("DELETE FROM events WHERE ts < now() - interval '13 months'");
       console.log('Database ready');
       return;
     } catch (e) {
@@ -238,6 +246,35 @@ app.get('/admin', auth, async (req, res) => {
   const nameOf = t => t === 'snapthejob' ? 'SnapTheJob (everything)' : (JOBS.find(j => slugify(j.biz) === t) || {}).biz || t;
   const ftr = targets.map(t => `<tr><td>${esc(nameOf(t))}</td><td>${(pf.find(r => r.target === t) || { n: 0 }).n}</td><td>${(ef.find(r => r.target === t) || { n: 0 }).n}</td></tr>`).join('');
   const backups = listBackups();
+  const days = (await pool.query(`SELECT to_char(d, 'YYYY-MM-DD') day,
+      (SELECT count(DISTINCT visitor) FROM events WHERE ts::date = d)::int visitors,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type='view')::int views,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type='play')::int plays,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type IN ('share','share_app'))::int shares,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type='quote')::int quotes,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type='follow')::int follows,
+      (SELECT count(*) FROM waitlist WHERE created_at::date = d)::int signups
+    FROM generate_series(current_date - 29, current_date, interval '1 day') d ORDER BY d DESC`)).rows;
+  const topJobs = (await pool.query("SELECT job, count(*)::int n FROM events WHERE type='play' AND ts > now() - interval '30 days' AND job <> '' GROUP BY job ORDER BY n DESC LIMIT 10")).rows;
+  const topRefs = (await pool.query("SELECT ref, count(DISTINCT visitor)::int n FROM events WHERE type='view' AND ref <> '' AND ts > now() - interval '30 days' GROUP BY ref ORDER BY n DESC LIMIT 10")).rows;
+  const shareApps = (await pool.query("SELECT detail, count(*)::int n FROM events WHERE type='share_app' AND ts > now() - interval '30 days' GROUP BY detail ORDER BY n DESC")).rows;
+  const devices = (await pool.query("SELECT device, count(DISTINCT visitor)::int n FROM events WHERE type='view' AND ts > now() - interval '30 days' GROUP BY device ORDER BY n DESC")).rows;
+  const sum = k => days.reduce((a, d) => a + d[k], 0);
+  const maxV = Math.max(1, ...days.map(d => d.visitors));
+  const bars = days.slice().reverse().map((d, i) => `<rect x="${i * 20 + 2}" y="${100 - Math.round(d.visitors / maxV * 90)}" width="16" height="${Math.round(d.visitors / maxV * 90)}" fill="#D9381E"><title>${d.day}: ${d.visitors} visitors</title></rect>`).join('');
+  const jobName = slug => (JOBS.find(j => j.slug === slug) || {}).title || slug;
+  const mini = (rows, label, key) => `<table style="min-width:0"><thead><tr><th>${label}</th><th>30 days</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(key(r))}</td><td>${r.n}</td></tr>`).join('') || '<tr><td colspan="2">Nothing yet</td></tr>'}</tbody></table>`;
+  const statsHtml = `<h2>Visitors (last 30 days)</h2>
+<div class="k"><div><b>${sum('visitors')}</b>Visitors*</div><div><b>${sum('views')}</b>Page views</div><div><b>${sum('plays')}</b>Videos watched</div><div><b>${sum('shares')}</b>Shares</div><div><b>${sum('quotes')}</b>Quote clicks</div><div><b>${sum('follows')}</b>New follows</div></div>
+<svg viewBox="0 0 600 104" width="100%" style="max-width:600px;display:block;border-bottom:1px solid #ddd" role="img" aria-label="Visitors per day, last 30 days">${bars}</svg>
+<p class="n">Bars: visitors per day, oldest on the left. *A visitor is counted once per day; no cookies are used.</p>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+${mini(topJobs, 'Most watched', r => jobName(r.job))}
+${mini(topRefs, 'Came from', r => r.ref)}
+${mini(shareApps, 'Shared to', r => r.detail)}
+${mini(devices, 'Device', r => r.device)}
+</div>
+<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Day by day</summary><div class="w"><table><thead><tr><th>Day</th><th>Visitors</th><th>Page views</th><th>Watched</th><th>Shares</th><th>Quote clicks</th><th>Follows</th><th>Sign-ups</th></tr></thead><tbody>${days.map(d => `<tr><td>${d.day}</td><td>${d.visitors}</td><td>${d.views}</td><td>${d.plays}</td><td>${d.shares}</td><td>${d.quotes}</td><td>${d.follows}</td><td>${d.signups}</td></tr>`).join('')}</tbody></table></div></details>`;
   const flash = { sent: 'Notification sent.', pw: 'Password changed. Use the new one next time you sign in.', pwbad: 'Password not changed: current password wrong, or new ones did not match / too short (min 12 characters).' }[req.query.m] || '';
   const sentInfo = req.query.m === 'sent' ? ` (${esc(req.query.n || 0)} phones)` : '';
   const when = d => esc(new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London' }));
@@ -250,6 +287,8 @@ app.get('/admin', auth, async (req, res) => {
 <body><h1>SnapTheJob admin</h1>
 ${flash ? `<p class="flash">${esc(flash)}${sentInfo}</p>` : ''}
 <div class="k"><div><b>${rows.length}</b>Waiting list</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div><div><b>${msgs.length}</b>Messages</div><div><b>${people.p}</b>Phones with alerts on</div><div><b>${people.e}</b>Email followers</div></div>
+
+${statsHtml}
 
 <h2>Contact messages</h2>
 <div class="w"><table><thead><tr><th>When</th><th>Topic</th><th>Name</th><th>Email</th><th>Message</th></tr></thead><tbody>${mtr || '<tr><td colspan="5">No messages yet.</td></tr>'}</tbody></table></div>
@@ -317,6 +356,29 @@ app.get('/admin/waitlist.csv', auth, async (req, res) => {
   };
   const csv = [cols.join(','), ...rows.map(r => cols.map(c => q(r[c])).join(','))].join('\r\n');
   res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="snapthejob-waitlist.csv"', 'Cache-Control': 'no-store' }).send(csv);
+});
+
+// ---------- private visitor stats (no cookies; visitors counted with a daily-changing anonymous code) ----------
+const EV_TYPES = new Set(['view', 'play', 'share', 'share_app', 'quote', 'follow', 'trade']);
+const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor|curl|wget/i;
+let saltDay = '', salt = '';
+function visitorCode(req) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (day !== saltDay) { saltDay = day; salt = crypto.randomBytes(16).toString('hex'); }
+  return crypto.createHash('sha256').update(salt + req.ip + (req.get('user-agent') || '')).digest('hex').slice(0, 16);
+}
+app.post('/api/e', express.text({ type: '*/*', limit: '2kb' }), (req, res) => {
+  res.status(204).end();
+  const ua = req.get('user-agent') || '';
+  if (BOT.test(ua)) return;
+  let b; try { b = JSON.parse(req.body || '{}'); } catch (e) { return; }
+  if (!EV_TYPES.has(b.t)) return;
+  let ref = clean(b.r, 300);
+  try { ref = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) { ref = ''; }
+  if (ref === 'snapthejob.co.uk') ref = '';
+  const device = /Mobi|Android|iPhone/i.test(ua) ? 'Phone' : /iPad|Tablet/i.test(ua) ? 'Tablet' : 'Computer';
+  pool.query('INSERT INTO events (type,path,job,detail,ref,device,visitor) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [b.t, clean(b.p, 200), clean(b.j, 80), clean(b.d, 80), ref, device, visitorCode(req)]).catch(() => {});
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));

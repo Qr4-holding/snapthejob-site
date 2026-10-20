@@ -30,6 +30,13 @@
   const JOBS = window.STJ_JOBS || [];
 
   const $ = (s, el = document) => el.querySelector(s);
+  const track = (t, extra = {}) => {
+    try {
+      const body = JSON.stringify(Object.assign({ t, p: location.pathname, r: document.referrer }, extra));
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/e', body); else fetch('/api/e', { method: 'POST', body, keepalive: true });
+    } catch (e) {}
+  };
+  track('view');
   const slugify = t => String(t).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const svg = (d, size = 18, stroke = 'currentColor') => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -149,6 +156,7 @@
   // any element with data-waitlist="trade|customer"
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-waitlist]');
+    if (t && t.dataset.waitlist === 'customer') track('quote', { d: t.dataset.biz || 'home' });
     if (!t) return;
     e.preventDefault();
     openWaitlist(t.dataset.waitlist, { biz: t.dataset.biz, trade: t.dataset.trade });
@@ -181,9 +189,11 @@
   </div>
 </div>`);
   const sh = $('#sh');
+  sh.addEventListener('click', e => { const a = e.target.closest('.sh-app'); if (a) track('share_app', { d: a.textContent.trim() }); else if (e.target.closest('#shCopy')) track('share_app', { d: 'Copy link' }); });
   let shLast = null, shData = null;
   let shFile = null;
   function openShare(path, title, img, video) {
+    track('share', { j: (path.match(/job\/([a-z0-9-]+)/) || [])[1] || '' });
     const url = new URL(path, location.origin).href;
     const text = title + ' · Before, After, Share. on SnapTheJob';
     shData = { url, title, text, video, caption: `${title}. Watch it and get a quote on SnapTheJob: ${url} #BeforeAndAfter #SnapTheJob` };
@@ -372,6 +382,7 @@
   function show(i) {
     idx = (i + list.length) % list.length;
     const j = list[idx];
+    track('play', { j: j.slug });
     if (openedHere) try { history.replaceState({ stjViewer: true }, '', '/job/' + j.slug); } catch (x) {}
     vid.src = j.playVideo || j.video; vid.poster = j.playCover || j.cover; vid.setAttribute('aria-label', j.alt);
     $('#vwAv').textContent = j.initials;
@@ -507,7 +518,7 @@
     const j = r ? await r.json().catch(() => ({})) : {};
     if (!r || !r.ok || !j.ok) return (err.textContent = j.error || 'Something went wrong. Please try again.');
     const f = getF(); f[feTarget] = { via: 'email' }; setF(f); paintFollows();
-    fe.hidden = true; toast(`Following ${feName}. We'll email you when there's something new.`);
+    track('follow', { d: 'email' }); fe.hidden = true; toast(`Following ${feName}. We'll email you when there's something new.`);
   });
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-follow]');
@@ -525,6 +536,7 @@
         const endpoint = await followPush(target);
         if (endpoint) {
           f[target] = { via: 'push', endpoint }; setF(f); paintFollows();
+          track('follow', { d: 'push' });
           return toast(`Following ${name}. You'll get an alert when there's a new job.`);
         }
       } catch (ex) { /* fall through to email */ } finally { b.disabled = false; }
