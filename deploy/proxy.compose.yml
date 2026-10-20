@@ -2,7 +2,7 @@
 # Apps join the "web" network and add caddy labels.
 services:
   caddy:
-    image: lucaslorentz/caddy-docker-proxy:2.9-alpine
+    image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine
     ports:
       - "80:80"
       - "443:443"
