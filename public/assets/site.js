@@ -25,20 +25,7 @@
   const TRADES = Object.keys(ICON).filter(t => t !== 'All');
   const SHARE = 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13';
 
-  const JOBS = [
-    {
-      slug: 'room-re-plaster', title: 'Full room re-plaster', biz: 'PS Plastering', initials: 'PS', trade: 'Plasterer',
-      video: '/media/ps-plastering.mp4', cover: '/media/ps-plastering.jpg', dur: '0:15', stages: ['BEFORE', 'DURING', 'AFTER'], voice: true,
-      services: ['Re-plastering', 'Skimming', 'Ceilings', 'Patch repairs', 'Artex removal'],
-      alt: 'Before, during and after: bare brick and blown plaster, then smooth new plaster'
-    },
-    {
-      slug: 'garden-house-clearance', title: 'Drive cleared: sofa, carpet and bags', biz: 'Your Waste Removal', initials: 'YW', trade: 'Waste removal',
-      video: '/media/waste-clearance.mp4', cover: '/media/waste-clearance.jpg', dur: '0:09', stages: ['BEFORE', 'AFTER'], voice: false,
-      services: ['House clearance', 'Garden waste', 'Trade waste', 'Garage clearance', 'Furniture removal'],
-      alt: 'Before and after: a driveway piled with a sofa and rubbish, then cleared'
-    }
-  ];
+  const JOBS = window.STJ_JOBS || [];
 
   const $ = (s, el = document) => el.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -164,24 +151,57 @@
     openWaitlist(t.dataset.waitlist, { biz: t.dataset.biz, trade: t.dataset.trade });
   });
 
-  // share: phone share sheet (WhatsApp, Facebook, text…), else copy the link
-  const toast = msg => {
-    let t = $('#toast');
-    if (!t) { document.body.insertAdjacentHTML('beforeend', '<div id="toast" role="status" class="toast"></div>'); t = $('#toast'); }
-    t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200);
-  };
-  document.addEventListener('click', async e => {
+  // ---------- share sheet: our own list of apps (works the same on phone and laptop) ----------
+  const NET = [
+    { id: 'whatsapp', name: 'WhatsApp', bg: '#25D366', mark: svg('M4 20l1.3-4A8 8 0 1112 20a8 8 0 01-4-1z', 24, '#fff'), href: (u, t) => 'https://wa.me/?text=' + encodeURIComponent(t + ' ' + u) },
+    { id: 'facebook', name: 'Facebook', bg: '#1877F2', mark: '<b>f</b>', href: u => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(u) },
+    { id: 'x', name: 'X', bg: '#000000', mark: '<b>X</b>', href: (u, t) => 'https://x.com/intent/post?text=' + encodeURIComponent(t) + '&url=' + encodeURIComponent(u) },
+    { id: 'linkedin', name: 'LinkedIn', bg: '#0A66C2', mark: '<b>in</b>', href: u => 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(u) },
+    { id: 'pinterest', name: 'Pinterest', bg: '#E60023', mark: '<b>P</b>', href: (u, t, img) => 'https://pinterest.com/pin/create/button/?url=' + encodeURIComponent(u) + '&media=' + encodeURIComponent(img) + '&description=' + encodeURIComponent(t) },
+    { id: 'sms', name: 'Text', bg: '#5E6168', mark: svg('M4 5h16v11H8l-4 4z', 22, '#fff'), href: (u, t) => 'sms:?&body=' + encodeURIComponent(t + ' ' + u), same: true },
+    { id: 'email', name: 'Email', bg: '#5E6168', mark: svg('M3 6h18v12H3zM3 7l9 7 9-7', 22, '#fff'), href: (u, t) => 'mailto:?subject=' + encodeURIComponent(t) + '&body=' + encodeURIComponent(t + '\n' + u), same: true }
+  ];
+  document.body.insertAdjacentHTML('beforeend', `
+<div class="sh" id="sh" hidden>
+  <div class="sh-box" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <div class="sh-head"><b id="shTitle" class="disp">Share this job</b>
+      <button class="x" type="button" data-shclose aria-label="Close">${svg('M6 6l12 12M18 6L6 18', 18, '#1F2124')}</button></div>
+    <div class="sh-grid" id="shGrid"></div>
+    <div class="sh-copy"><input id="shUrl" readonly aria-label="Link to this job"><button class="btn btn-red" type="button" id="shCopy">Copy link</button></div>
+    <button class="link" type="button" id="shMore" hidden>More options on this device</button>
+  </div>
+</div>`);
+  const sh = $('#sh');
+  let shLast = null, shData = null;
+  function openShare(path, title, img) {
+    const url = new URL(path, location.origin).href;
+    const text = title + ' · Before, After, Share. on SnapTheJob';
+    shData = { url, title, text };
+    $('#shGrid').innerHTML = NET.map(n => `<a class="sh-app" href="${esc(n.href(url, text, new URL(img || '/media/ps-plastering.jpg', location.origin).href))}" ${n.same ? '' : 'target="_blank" rel="noopener"'}><span style="background:${n.bg}">${n.mark}</span>${n.name}</a>`).join('');
+    $('#shUrl').value = url;
+    $('#shCopy').textContent = 'Copy link';
+    $('#shMore').hidden = !navigator.share;
+    shLast = document.activeElement;
+    sh.hidden = false;
+    setTimeout(() => $('#shCopy').focus(), 30);
+  }
+  function closeShare() { sh.hidden = true; if (shLast) shLast.focus(); }
+  sh.addEventListener('click', e => { if (e.target === sh || e.target.closest('[data-shclose]')) closeShare(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sh.hidden) { e.stopImmediatePropagation(); closeShare(); } }, true);
+  $('#shCopy').addEventListener('click', async () => {
+    const inp = $('#shUrl');
+    try { await navigator.clipboard.writeText(inp.value); }
+    catch (ex) { inp.select(); try { document.execCommand('copy'); } catch (e2) {} }
+    $('#shCopy').textContent = 'Copied ✓';
+  });
+  $('#shMore').addEventListener('click', () => {
+    if (navigator.share && shData) navigator.share({ title: shData.title, text: shData.text, url: shData.url }).catch(() => {});
+  });
+  document.addEventListener('click', e => {
     const b = e.target.closest('[data-share]');
     if (!b) return;
     e.preventDefault();
-    const url = new URL(b.dataset.share, location.origin).href;
-    const title = b.dataset.title || 'SnapTheJob';
-    if (navigator.share) {
-      try { await navigator.share({ title, text: title + ' · Before, After, Share. on SnapTheJob', url }); } catch (ex) {}
-      return;
-    }
-    try { await navigator.clipboard.writeText(url); toast('Link copied. Paste it anywhere to share.'); }
-    catch (ex) { prompt('Copy this link to share:', url); }
+    openShare(b.dataset.share, b.dataset.title || 'SnapTheJob', b.dataset.img);
   });
 
   // search box: filter on the home page, or go home with the query
@@ -206,7 +226,7 @@
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
         <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
       <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
-      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
+      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
   }
   function soon(trade) {
@@ -267,62 +287,65 @@
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
-        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}">${svg(SHARE, 22)}Share this job</button>
+        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}">${svg(SHARE, 22)}Share this job</button>
         <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. SnapTheJob hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
       </div>`;
     const more = $('#more');
     if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + ['Roofer', 'Bathrooms', 'Builder'].map(soon).join('');
   }
 
-  // ---------- full-screen player (tap a video: watch, swipe for next, close to keep browsing) ----------
+  // ---------- full-screen player, laid out like Shorts ----------
   document.body.insertAdjacentHTML('beforeend', `
 <div class="vw" id="vw" hidden role="dialog" aria-modal="true" aria-label="Video player">
   <div class="vw-top">
-    <button class="vw-x" type="button" id="vwClose" aria-label="Close video">${svg('M15 18l-6-6 6-6', 26, '#fff')}</button>
-    <a class="vw-biz" id="vwBiz" href="#"><span class="av" id="vwAv"></span><span><b id="vwName"></b><small id="vwTrade"></small></span></a>
+    <button class="vw-x" type="button" id="vwClose" aria-label="Back to jobs">${svg('M15 18l-6-6 6-6', 26, 'currentColor')}</button>
+    <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="word"><b class="disp">Snap<span class="red">The</span>Job</b></span></a>
   </div>
-  <div class="vw-stage" id="vwStage"><video id="vwVideo" playsinline preload="auto"></video><span class="vw-paused" aria-hidden="true">${svg('M8 5v14l11-7z', 44, '#fff')}</span></div>
-  <button class="vw-nav vw-prev" type="button" id="vwPrev" aria-label="Previous video">${svg('M18 15l-6-6-6 6', 26, '#fff')}</button>
-  <button class="vw-nav vw-next" type="button" id="vwNext" aria-label="Next video">${svg('M6 9l6 6 6-6', 26, '#fff')}</button>
-  <div class="vw-bot">
-    <div class="vw-title disp" id="vwTitle"></div>
-    <div class="vw-hint" id="vwHint" aria-hidden="true">${svg('M6 15l6-6 6 6', 22, '#fff')}<span>Swipe up for next</span></div>
-    <div class="vw-cta">
-      <button class="btn btn-red disp" type="button" id="vwQuote" data-waitlist="customer">Get a quote</button>
-      <button class="btn vw-share disp" type="button" id="vwShare">${svg(SHARE, 20)}Share</button>
+  <div class="vw-main">
+    <div class="vw-stage" id="vwStage">
+      <video id="vwVideo" playsinline preload="auto"></video>
+      <span class="vw-paused" aria-hidden="true">${svg('M8 5v14l11-7z', 44, '#fff')}</span>
+      <div class="vw-info">
+        <a class="vw-biz" id="vwBiz" href="#"><span class="av" id="vwAv"></span><b id="vwName"></b></a>
+        <div class="vw-title" id="vwTitle"></div>
+      </div>
     </div>
+    <div class="vw-rail">
+      <button class="vw-act vw-quote" type="button" id="vwQuote" data-waitlist="customer"><span>${svg('M4 5h16v11H8l-4 4z', 24, '#fff')}</span>Get a quote</button>
+      <button class="vw-act" type="button" id="vwShare"><span>${svg('M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6', 24, 'currentColor')}</span>Share</button>
+      <a class="vw-act" id="vwPage" href="#"><span class="av" id="vwAv2"></span>Business</a>
+    </div>
+  </div>
+  <div class="vw-navs">
+    <button class="vw-nav" type="button" id="vwPrev" aria-label="Previous video">${svg('M12 19V5M5 12l7-7 7 7', 26, 'currentColor')}</button>
+    <button class="vw-nav" type="button" id="vwNext" aria-label="Next video">${svg('M12 5v14M5 12l7 7 7-7', 26, 'currentColor')}</button>
   </div>
 </div>`);
   const vw = $('#vw'), vid = $('#vwVideo');
-  const wide = window.matchMedia('(min-width: 721px)');
-  const setControls = () => { vid.controls = wide.matches; };
-  setControls(); if (wide.addEventListener) wide.addEventListener('change', setControls);
-  vid.addEventListener('click', () => { if (vid.controls) return; vid.paused ? vid.play() : vid.pause(); });
+  let list = [], idx = 0, openedHere = false, vwLast = null;
+  vid.addEventListener('click', () => { vid.paused ? vid.play().catch(() => {}) : vid.pause(); });
   vid.addEventListener('pause', () => vw.classList.add('is-paused'));
   vid.addEventListener('play', () => vw.classList.remove('is-paused'));
-  let list = [], idx = 0, openedHere = false, vwLast = null;
   function show(i) {
     idx = (i + list.length) % list.length;
     const j = list[idx];
-    vid.src = j.video; vid.poster = j.cover;
-    vid.setAttribute('aria-label', j.alt);
-    $('#vwAv').textContent = j.initials;
-    $('#vwName').textContent = j.biz; $('#vwTrade').textContent = j.trade + ' · View job page';
-    $('#vwBiz').href = '/job?j=' + j.slug;
+    vid.src = j.video; vid.poster = j.cover; vid.setAttribute('aria-label', j.alt);
+    $('#vwAv').textContent = $('#vwAv2').textContent = j.initials;
+    $('#vwName').textContent = j.biz;
+    $('#vwBiz').href = $('#vwPage').href = '/job?j=' + j.slug;
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
-    $('#vwShare').dataset.share = '/job?j=' + j.slug; $('#vwShare').dataset.title = j.title + ' by ' + j.biz;
+    const s = $('#vwShare'); s.dataset.share = '/job?j=' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover;
     $('#vwPrev').hidden = $('#vwNext').hidden = list.length < 2;
-    $('#vwHint').hidden = list.length < 2;
-    const p = vid.play(); if (p && p.catch) p.catch(() => {});
+    vid.play().catch(() => {});
   }
   function openViewer(slug, slugs) {
     list = (slugs && slugs.length ? slugs : JOBS.map(j => j.slug)).map(s => JOBS.find(j => j.slug === s)).filter(Boolean);
-    const i = Math.max(0, list.findIndex(j => j.slug === slug));
+    if (!list.length) return;
     vwLast = document.activeElement;
     vw.hidden = false; document.body.style.overflow = 'hidden';
     history.pushState({ stjViewer: true }, ''); openedHere = true;
-    show(i);
+    show(Math.max(0, list.findIndex(j => j.slug === slug)));
     $('#vwClose').focus();
   }
   function closeViewer(fromHistory) {
@@ -337,11 +360,13 @@
   $('#vwClose').addEventListener('click', () => closeViewer(false));
   $('#vwNext').addEventListener('click', () => show(idx + 1));
   $('#vwPrev').addEventListener('click', () => show(idx - 1));
+  $('#vwQuote').addEventListener('click', () => vid.pause());
+  $('#vwShare').addEventListener('click', () => vid.pause());
   document.addEventListener('keydown', e => {
-    if (vw.hidden || !ov.hidden) return;
+    if (vw.hidden || !ov.hidden || !sh.hidden) return;
     if (e.key === 'Escape') closeViewer(false);
-    else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); show(idx + 1); }
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); show(idx - 1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); show(idx + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); show(idx - 1); }
   });
   let ty = null, tx = null;
   $('#vwStage').addEventListener('touchstart', e => { ty = e.touches[0].clientY; tx = e.touches[0].clientX; }, { passive: true });
@@ -350,16 +375,18 @@
     const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx; ty = null;
     if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) && list.length > 1) show(idx + (dy < 0 ? 1 : -1));
   }, { passive: true });
-  vid.addEventListener('ended', () => { if (list.length > 1) show(idx + 1); else { vid.currentTime = 0; } });
-  // the quote popup sits on top of the player
-  $('#vwQuote').addEventListener('click', () => vid.pause());
+  let wheelLock = 0;
+  vw.addEventListener('wheel', e => {
+    if (list.length < 2 || Math.abs(e.deltaY) < 30 || Date.now() < wheelLock) return;
+    wheelLock = Date.now() + 700; show(idx + (e.deltaY > 0 ? 1 : -1));
+  }, { passive: true });
+  vid.addEventListener('ended', () => { if (list.length > 1) show(idx + 1); });
   document.addEventListener('click', e => {
     const a = e.target.closest('[data-play]');
     if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
     const scope = a.closest('.grid') || document;
-    const slugs = [...new Set([...scope.querySelectorAll('[data-play]')].map(x => x.dataset.play))];
-    openViewer(a.dataset.play, slugs);
+    openViewer(a.dataset.play, [...new Set([...scope.querySelectorAll('[data-play]')].map(x => x.dataset.play))]);
   });
 
   // ---------- contact page ----------

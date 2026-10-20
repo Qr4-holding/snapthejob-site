@@ -167,6 +167,30 @@ app.get('/admin/waitlist.csv', auth, async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// ---------- jobs data + per-job share previews ----------
+const fs = require('fs');
+const JOBS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/jobs.json'), 'utf8'));
+const jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(JOBS) + ';';
+app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=60' }).send(jobsJs));
+const jobTpl = fs.readFileSync(path.join(__dirname, 'public/job.html'), 'utf8');
+app.get(['/job', '/job.html'], (req, res) => {
+  const j = JOBS.find(x => x.slug === req.query.j) || JOBS[0];
+  const origin = req.protocol + '://' + req.get('host');
+  const title = esc(`${j.title} by ${j.biz} · SnapTheJob`);
+  const desc = esc(`Before and after video by ${j.biz}, ${j.trade}. Watch it on SnapTheJob.`);
+  let html = jobTpl
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${desc}">`)
+    .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${title}">`)
+    .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${desc}">`)
+    .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${origin}${j.cover}">
+<meta property="og:url" content="${origin}/job?j=${encodeURIComponent(j.slug)}">
+<meta property="og:type" content="video.other">
+<meta property="og:video" content="${origin}${j.video}">
+<meta name="twitter:card" content="summary_large_image">`);
+  res.set('Cache-Control', 'public, max-age=60').send(html);
+});
+
 // ---------- static site ----------
 app.use('/media', express.static(path.join(__dirname, 'public/media'), { maxAge: '7d' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1m' }));
