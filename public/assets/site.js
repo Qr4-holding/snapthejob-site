@@ -23,6 +23,7 @@
     'Central Heating': 'M5 5v14M9 5v14M13 5v14M17 5v14M3 19h18'
   };
   const TRADES = Object.keys(ICON).filter(t => t !== 'All');
+  const SHARE = 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13';
 
   const JOBS = [
     {
@@ -163,6 +164,26 @@
     openWaitlist(t.dataset.waitlist, { biz: t.dataset.biz, trade: t.dataset.trade });
   });
 
+  // share: phone share sheet (WhatsApp, Facebook, text…), else copy the link
+  const toast = msg => {
+    let t = $('#toast');
+    if (!t) { document.body.insertAdjacentHTML('beforeend', '<div id="toast" role="status" class="toast"></div>'); t = $('#toast'); }
+    t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2200);
+  };
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-share]');
+    if (!b) return;
+    e.preventDefault();
+    const url = new URL(b.dataset.share, location.origin).href;
+    const title = b.dataset.title || 'SnapTheJob';
+    if (navigator.share) {
+      try { await navigator.share({ title, text: title + ' · Before, After, Share. on SnapTheJob', url }); } catch (ex) {}
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast('Link copied. Paste it anywhere to share.'); }
+    catch (ex) { prompt('Copy this link to share:', url); }
+  });
+
   // search box: filter on the home page, or go home with the query
   const sf = $('#searchForm');
   if (sf) sf.addEventListener('submit', e => {
@@ -184,7 +205,8 @@
       </a>
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
         <div style="min-width:0"><a class="t" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
-      <button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
+      <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
+      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
   }
   function soon(trade) {
@@ -245,13 +267,9 @@
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
-        <div class="links"><button class="link" type="button" id="copyLink">Copy link</button></div>
+        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}">${svg(SHARE, 22)}Share this job</button>
         <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. SnapTheJob hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
       </div>`;
-    $('#copyLink').addEventListener('click', async e => {
-      try { await navigator.clipboard.writeText(location.href); e.target.textContent = 'Link copied'; }
-      catch (ex) { e.target.textContent = 'Copy the address bar link'; }
-    });
     const more = $('#more');
     if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + ['Roofer', 'Bathrooms', 'Builder'].map(soon).join('');
   }
