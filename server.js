@@ -321,27 +321,77 @@ app.get('/admin/waitlist.csv', auth, async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-// ---------- jobs data + per-job share previews ----------
+// ---------- jobs, trades and search-engine pages ----------
 const JOBS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/jobs.json'), 'utf8'));
+const TRADES = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/trades.json'), 'utf8'));
+const tradeSlug = t => slugify(t);
+const ORIGIN = 'https://snapthejob.co.uk';
 const jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(JOBS) + ';';
 app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=60' }).send(jobsJs));
-const jobTpl = fs.readFileSync(path.join(__dirname, 'public/job.html'), 'utf8');
+
+const tpl = { index: fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8'), job: fs.readFileSync(path.join(__dirname, 'public/job.html'), 'utf8') };
+const tradeLinks = '<nav class="tradelinks" aria-label="All trades"><b>Browse trades:</b> ' +
+  TRADES.map(t => `<a href="/trades/${tradeSlug(t)}">${esc(t)}</a>`).join(' · ') + '</nav>';
+function page(html, { title, desc, url, image, extra = '' }) {
+  return html
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
+    .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
+    .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(title)}">`)
+    .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(desc)}">`)
+    .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${ORIGIN}${image || '/media/ps-plastering.jpg'}">
+<meta property="og:url" content="${ORIGIN}${url}">
+<meta property="og:site_name" content="SnapTheJob">
+<link rel="canonical" href="${ORIGIN}${url}">
+<meta name="twitter:card" content="summary_large_image">${extra}`)
+    .replace('<!--TRADE_LINKS-->', tradeLinks);
+}
+const ld = o => `\n<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
+const isoDur = d => { const [m, s] = d.split(':').map(Number); return `PT${m ? m + 'M' : ''}${s}S`; };
+
+app.get(['/', '/index.html'], (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
+    title: 'SnapTheJob · Before and after videos from UK trades',
+    desc: 'Watch real before and after videos of jobs by local plumbers, builders, plasterers, roofers, waste removal and more. Then get a quote.',
+    url: '/',
+    extra: ld({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'SnapTheJob', url: ORIGIN + '/', potentialAction: { '@type': 'SearchAction', target: ORIGIN + '/?q={search_term_string}', 'query-input': 'required name=search_term_string' } })
+  }));
+});
+app.get('/trades/:t', (req, res, next) => {
+  const t = TRADES.find(x => tradeSlug(x) === req.params.t);
+  if (!t) return next();
+  const n = JOBS.filter(j => j.trade === t).length;
+  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
+    title: `${t} before and after videos · SnapTheJob`,
+    desc: n ? `Watch before and after videos of real ${t.toLowerCase()} jobs by local trades, then get a quote.` : `Before and after videos of ${t.toLowerCase()} jobs are coming soon to SnapTheJob. Trades: be the first to post yours.`,
+    url: `/trades/${tradeSlug(t)}`
+  }));
+});
 app.get(['/job', '/job.html'], (req, res) => {
-  const j = JOBS.find(x => x.slug === req.query.j) || JOBS[0];
-  const origin = req.protocol + '://' + req.get('host');
-  const title = esc(`${j.title} by ${j.biz} · SnapTheJob`);
-  const desc = esc(`Before and after video by ${j.biz}, ${j.trade}. Watch it on SnapTheJob.`);
-  let html = jobTpl
-    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
-    .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${desc}">`)
-    .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${title}">`)
-    .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${desc}">`)
-    .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${origin}${j.cover}">
-<meta property="og:url" content="${origin}/job?j=${encodeURIComponent(j.slug)}">
-<meta property="og:type" content="video.other">
-<meta property="og:video" content="${origin}${j.video}">
-<meta name="twitter:card" content="summary_large_image">`);
-  res.set('Cache-Control', 'public, max-age=60').send(html);
+  const j = JOBS.find(x => x.slug === req.query.j);
+  res.redirect(301, j ? `/job/${j.slug}` : '/');
+});
+app.get('/job/:slug', (req, res, next) => {
+  const j = JOBS.find(x => x.slug === req.params.slug);
+  if (!j) return next();
+  const title = `${j.title} by ${j.biz} · SnapTheJob`;
+  const desc = j.description || `Before and after video by ${j.biz}, ${j.trade}. Watch it on SnapTheJob.`;
+  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.job, {
+    title, desc, url: `/job/${j.slug}`, image: j.cover,
+    extra: `\n<meta property="og:type" content="video.other">\n<meta property="og:video" content="${ORIGIN}${j.video}">` + ld({
+      '@context': 'https://schema.org', '@type': 'VideoObject',
+      name: `${j.title} by ${j.biz}`, description: desc,
+      thumbnailUrl: [ORIGIN + j.cover], uploadDate: j.date, duration: isoDur(j.dur),
+      contentUrl: ORIGIN + (j.playVideo || j.video), embedUrl: `${ORIGIN}/job/${j.slug}`,
+      publisher: { '@type': 'Organization', name: 'SnapTheJob', logo: { '@type': 'ImageObject', url: ORIGIN + '/assets/icon-512.png' } }
+    })
+  }));
+});
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
+app.get('/sitemap.xml', (req, res) => {
+  const urls = ['/', ...TRADES.map(t => `/trades/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/contact', '/privacy'];
+  const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
+    urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
 });
 
 // ---------- static site ----------

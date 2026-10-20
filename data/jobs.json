@@ -23,7 +23,9 @@
   ],
   "alt": "Before, during and after: bare brick and blown plaster, then smooth new plaster",
   "playVideo": "/media/ps-plastering-site.mp4",
-  "playCover": "/media/ps-plastering-site.jpg"
+  "playCover": "/media/ps-plastering-site.jpg",
+  "date": "2026-10-20",
+  "description": "A full room re-plaster by PS Plastering: blown plaster and bare brick hacked off, walls re-plastered, finished smooth and ready to paint."
  },
  {
   "slug": "garden-house-clearance",
@@ -48,6 +50,8 @@
   ],
   "alt": "Before and after: a driveway piled with a sofa and rubbish, then cleared",
   "playVideo": "/media/waste-clearance-site.mp4",
-  "playCover": "/media/waste-clearance-site.jpg"
+  "playCover": "/media/waste-clearance-site.jpg",
+  "date": "2026-10-20",
+  "description": "A driveway cleared of an old sofa, carpet and rubbish bags, leaving it clean and empty."
  }
 ]

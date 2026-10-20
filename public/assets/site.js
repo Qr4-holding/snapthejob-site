@@ -246,19 +246,21 @@
   });
 
   // ---------- home feed ----------
-  const state = { trade: (new URLSearchParams(location.search).get('trade') && ICON[new URLSearchParams(location.search).get('trade')]) ? new URLSearchParams(location.search).get('trade') : 'All', q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
+  const pathTrade = ((location.pathname.match(/^\/trades\/([a-z0-9-]+)/) || [])[1]);
+  const qTrade = new URLSearchParams(location.search).get('trade');
+  const state = { trade: (pathTrade && TRADES.find(t => slugify(t) === pathTrade)) || (qTrade && ICON[qTrade] ? qTrade : 'All'), q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
   try { state.view = localStorage.getItem('stj-view') || 'grid'; } catch (e) {}
 
   function card(j) {
     return `<article class="card">
-      <a class="thumb" data-play="${j.slug}" href="/job?j=${j.slug}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}">
+      <a class="thumb" data-play="${j.slug}" href="/job/${j.slug}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}">
         <img src="${j.cover}" alt="${esc(j.alt)}" loading="lazy">
         <span class="demo">DEMO</span><span class="dur">${j.dur}</span>
       </a>
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
-        <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
+        <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job/${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
       <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
-      <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
+      <button class="btn share" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
   }
   function soon(trade) {
@@ -291,7 +293,8 @@
   const chips = $('#chips');
   if (chips) {
     chips.innerHTML = ['All', ...TRADES].map(t => `<button class="chip" type="button" data-trade="${esc(t)}" aria-pressed="false">${svg(ICON[t], 17)}${esc(t)}</button>`).join('');
-    chips.addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; state.trade = c.dataset.trade; state.q = ''; if (sf) sf.q.value = ''; render(); });
+    chips.addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; state.trade = c.dataset.trade; state.q = ''; if (sf) sf.q.value = ''; render();
+      try { history.replaceState(null, '', state.trade === 'All' ? '/' : '/trades/' + slugify(state.trade)); } catch (x) {} });
     document.querySelectorAll('.toggle button').forEach(b => b.addEventListener('click', () => {
       state.view = b.dataset.view; try { localStorage.setItem('stj-view', state.view); } catch (e) {} render();
     }));
@@ -302,14 +305,14 @@
   // ---------- job page ----------
   const jobEl = $('#job');
   if (jobEl) {
-    const slug = new URLSearchParams(location.search).get('j');
+    const slug = (location.pathname.match(/^\/job\/([a-z0-9-]+)/) || [])[1] || new URLSearchParams(location.search).get('j');
     const j = JOBS.find(x => x.slug === slug) || JOBS[0];
     document.title = `${j.title} by ${j.biz} · SnapTheJob`;
     const tagClass = { BEFORE: 'b', DURING: 'd', AFTER: 'a' };
     jobEl.innerHTML = `
       <div class="player"><video src="${j.video}" poster="${j.cover}" controls playsinline preload="metadata" aria-label="${esc(j.alt)}"></video></div>
       <div class="info">
-        <div class="crumb"><a href="/">Jobs</a> › <a href="/?q=${encodeURIComponent(j.trade.toLowerCase())}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
+        <div class="crumb"><a href="/">Jobs</a> › <a href="/trades/${slugify(j.trade)}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
         <h1 class="disp">${esc(j.title)}</h1>
         <div class="tags">${j.stages.map(s => `<span class="tag ${tagClass[s]}">${s}</span>`).join('')}
           <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''} · Demo</span></div>
@@ -320,7 +323,7 @@
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
-        <button class="btn bigshare disp" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
+        <button class="btn bigshare disp" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
         <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. SnapTheJob hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
       </div>`;
     const more = $('#more');
@@ -339,7 +342,7 @@
     <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}Get 3 quotes</button>
     <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}I'm a trade</button>
     <div class="vw-side-h">Trades</div>
-    ${TRADES.map(t => `<a href="/?trade=${encodeURIComponent(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
+    ${TRADES.map(t => `<a href="/trades/${slugify(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
   </nav>
   <div class="vw-main">
     <div class="vw-stage" id="vwStage">
@@ -369,14 +372,15 @@
   function show(i) {
     idx = (i + list.length) % list.length;
     const j = list[idx];
+    if (openedHere) try { history.replaceState({ stjViewer: true }, '', '/job/' + j.slug); } catch (x) {}
     vid.src = j.playVideo || j.video; vid.poster = j.playCover || j.cover; vid.setAttribute('aria-label', j.alt);
     $('#vwAv').textContent = j.initials;
     $('#vwName').textContent = j.biz;
     const fb = $('#vwFollow'); fb.dataset.follow = slugify(j.biz); fb.dataset.followName = j.biz; paintFollows();
-    $('#vwBiz').href = '/job?j=' + j.slug;
+    $('#vwBiz').href = '/job/' + j.slug;
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
-    const s = $('#vwShare'); s.dataset.share = '/job?j=' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover; s.dataset.video = j.video;
+    const s = $('#vwShare'); s.dataset.share = '/job/' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover; s.dataset.video = j.video;
     $('#vwPrev').hidden = $('#vwNext').hidden = list.length < 2;
     vid.play().catch(() => {});
   }
@@ -385,8 +389,9 @@
     if (!list.length) return;
     vwLast = document.activeElement;
     vw.hidden = false; document.body.style.overflow = 'hidden';
-    history.pushState({ stjViewer: true }, ''); openedHere = true;
+    history.pushState({ stjViewer: true }, '', '/job/' + slug); openedHere = true;
     show(Math.max(0, list.findIndex(j => j.slug === slug)));
+    if (list.length) history.replaceState({ stjViewer: true }, '', '/job/' + list[idx].slug);
     $('#vwClose').focus();
   }
   function closeViewer(fromHistory) {
