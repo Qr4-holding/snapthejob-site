@@ -30,6 +30,7 @@
   const JOBS = window.STJ_JOBS || [];
 
   const $ = (s, el = document) => el.querySelector(s);
+  const slugify = t => String(t).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const svg = (d, size = 18, stroke = 'currentColor') => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 
@@ -314,6 +315,7 @@
           <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''} · Demo</span></div>
         <div class="biz"><span class="av" aria-hidden="true">${j.initials}</span>
           <div style="flex:1 1 160px;min-width:0"><div style="font-weight:700;font-size:19px">${esc(j.biz)}</div><div class="small" style="font-size:15px">${esc(j.trade)}</div></div>
+          <button class="follow" type="button" data-follow="${slugify(j.biz)}" data-follow-name="${esc(j.biz)}" aria-pressed="false">Follow</button>
           <div class="services"><span style="background:none;font-weight:700;padding:6px 4px 6px 0">Services:</span>${j.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
@@ -344,7 +346,8 @@
       <video id="vwVideo" playsinline preload="auto"></video>
       <span class="vw-paused" aria-hidden="true">${svg('M8 5v14l11-7z', 44, '#fff')}</span>
       <div class="vw-info">
-        <a class="vw-biz" id="vwBiz" href="#"><span class="av" id="vwAv"></span><b id="vwName"></b></a>
+        <div class="vw-who"><a class="vw-biz" id="vwBiz" href="#"><span class="av" id="vwAv"></span><b id="vwName"></b></a>
+        <button class="follow vw-follow" type="button" id="vwFollow" data-follow="" aria-pressed="false">Follow</button></div>
         <div class="vw-title" id="vwTitle"></div>
       </div>
     </div>
@@ -369,6 +372,7 @@
     vid.src = j.playVideo || j.video; vid.poster = j.playCover || j.cover; vid.setAttribute('aria-label', j.alt);
     $('#vwAv').textContent = j.initials;
     $('#vwName').textContent = j.biz;
+    const fb = $('#vwFollow'); fb.dataset.follow = slugify(j.biz); fb.dataset.followName = j.biz; paintFollows();
     $('#vwBiz').href = '/job?j=' + j.slug;
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
@@ -425,6 +429,104 @@
     const scope = a.closest('.grid') || document;
     openViewer(a.dataset.play, [...new Set([...scope.querySelectorAll('[data-play]')].map(x => x.dataset.play))]);
   });
+
+
+  // ---------- follow: phone alerts (free), or email if alerts aren't possible ----------
+  function toast(msg) {
+    let t = $('#toast');
+    if (!t) { document.body.insertAdjacentHTML('beforeend', '<div id="toast" role="status" class="toast"></div>'); t = $('#toast'); }
+    t.textContent = msg; t.classList.add('on'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 3200);
+  }
+  const FKEY = 'stj-follows';
+  const getF = () => { try { return JSON.parse(localStorage.getItem(FKEY) || '{}'); } catch (e) { return {}; } };
+  const setF = o => { try { localStorage.setItem(FKEY, JSON.stringify(o)); } catch (e) {} };
+  function paintFollows() {
+    const f = getF();
+    document.querySelectorAll('[data-follow]').forEach(b => {
+      const on = !!f[b.dataset.follow];
+      b.setAttribute('aria-pressed', on);
+      b.classList.toggle('on', on);
+      const lbl = b.querySelector('.fl') || b;
+      lbl.textContent = on ? 'Following' : (b.dataset.follow === 'snapthejob' ? 'Follow SnapTheJob' : 'Follow');
+    });
+  }
+  const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+  async function followPush(target) {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return null;
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    const { key } = await (await fetch('/api/push-key')).json();
+    if (!key) return null;
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+    const r = await fetch('/api/follow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target, subscription: sub.toJSON() }) });
+    if (!r.ok) return null;
+    return sub.endpoint;
+  }
+  document.body.insertAdjacentHTML('beforeend', `
+<div class="ov" id="fe" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="feTitle">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <h2 class="disp" id="feTitle"></h2>
+      <button class="x" type="button" data-feclose aria-label="Close">${svg('M6 6l12 12M18 6L6 18', 18, '#1F2124')}</button>
+    </div>
+    <form id="feForm" novalidate style="display:flex;flex-direction:column;gap:14px">
+      <p id="feIntro" style="margin:0;line-height:1.5"></p>
+      <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+      <label class="f">Email<input name="email" type="email" autocomplete="email" inputmode="email"></label>
+      <label class="consent"><input type="checkbox" name="consent"><span id="feConsent"></span></label>
+      <div class="err" id="feErr" role="alert"></div>
+      <button class="send disp" type="submit">Follow by email</button>
+      <p class="small" style="margin:0;text-align:center">On an iPhone? Add SnapTheJob to your home screen to get phone alerts instead. <a href="/privacy">Privacy</a></p>
+    </form>
+  </div>
+</div>`);
+  const fe = $('#fe'), feForm = $('#feForm');
+  let feTarget = null, feName = '';
+  function openEmailFollow(target, name) {
+    feTarget = target; feName = name; feForm.reset(); $('#feErr').textContent = '';
+    $('#feTitle').textContent = 'Follow ' + name;
+    $('#feIntro').textContent = target === 'snapthejob' ? 'Get an email round-up of new before and after jobs.' : `Get an email when ${name} posts a new job.`;
+    $('#feConsent').textContent = `Email me about new jobs from ${name}. I can unsubscribe at any time.`;
+    fe.hidden = false; setTimeout(() => feForm.email.focus(), 30);
+  }
+  fe.addEventListener('click', e => { if (e.target === fe || e.target.closest('[data-feclose]')) fe.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !fe.hidden) { e.stopImmediatePropagation(); fe.hidden = true; } }, true);
+  feForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = $('#feErr'), email = feForm.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return (err.textContent = 'Please add a valid email address.', feForm.email.focus());
+    if (!feForm.consent.checked) return (err.textContent = 'Please tick the box so we can email you.', feForm.consent.focus());
+    const r = await fetch('/api/follow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: feTarget, email, consent: true, website: feForm.website.value }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok || !j.ok) return (err.textContent = j.error || 'Something went wrong. Please try again.');
+    const f = getF(); f[feTarget] = { via: 'email' }; setF(f); paintFollows();
+    fe.hidden = true; toast(`Following ${feName}. We'll email you when there's something new.`);
+  });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-follow]');
+    if (!b || !b.dataset.follow) return;
+    e.preventDefault();
+    const target = b.dataset.follow, name = b.dataset.followName || 'SnapTheJob', f = getF();
+    if (f[target]) {
+      if (f[target].via === 'push' && f[target].endpoint) fetch('/api/unfollow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target, endpoint: f[target].endpoint }) }).catch(() => {});
+      const was = f[target].via; delete f[target]; setF(f); paintFollows();
+      return toast(was === 'email' ? `Unfollowed. To stop the emails too, use the unsubscribe link in any email.` : `Unfollowed ${name}.`);
+    }
+    if (pushOK() && Notification.permission !== 'denied') {
+      b.disabled = true;
+      try {
+        const endpoint = await followPush(target);
+        if (endpoint) {
+          f[target] = { via: 'push', endpoint }; setF(f); paintFollows();
+          return toast(`Following ${name}. You'll get an alert when there's a new job.`);
+        }
+      } catch (ex) { /* fall through to email */ } finally { b.disabled = false; }
+    }
+    openEmailFollow(target, name);
+  });
+  paintFollows();
 
   // ---------- contact page ----------
   const cf = $('#contactForm');

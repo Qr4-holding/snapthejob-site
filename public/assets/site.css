@@ -211,3 +211,19 @@ button{font:inherit}
 .sh-vid .sh-app{background:none;border:none;cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:var(--ink)}
 .sh-note{margin:-4px 0 0;background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600}
 .vw-logo small{font-size:12px;margin-top:3px}
+
+/* follow */
+.follow{min-height:40px;padding:0 16px;border-radius:20px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex:none}
+.follow:hover{background:#000}
+.follow.on{background:#F2F2F0;color:var(--ink)}
+.follow:disabled{opacity:.6}
+.follow-site{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.follow-site:hover{background:var(--soft)}
+.follow-site.on{background:var(--soft)}
+.vw-who{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vw-follow{min-height:34px;padding:0 14px;font-size:14px;background:#fff;color:var(--ink)}
+.vw-follow:hover{background:#eee}
+.vw-follow.on{background:rgba(255,255,255,.25);color:#fff}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:24px;font-weight:600;font-size:15px;opacity:0;pointer-events:none;transition:.2s;z-index:70;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media (max-width:720px){.follow-site .fl{display:none}.follow-site{padding:0 12px;min-height:42px}}

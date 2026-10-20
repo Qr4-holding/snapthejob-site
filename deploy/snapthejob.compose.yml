@@ -1,6 +1,7 @@
 # SnapTheJob site + its own PostgreSQL database (as deployed on the Hostinger VPS, Docker manager project "snapthejob").
 # Project environment (set on the server only, never in this repo):
-#   DB_PASSWORD, ADMIN_PASSWORD, SITE_HOSTS=snapthejob.co.uk, REDIRECT_HOSTS=www.snapthejob.co.uk, srv2079067.hstgr.cloud
+#   DB_PASSWORD, ADMIN_PASSWORD, VAPID_PUBLIC, VAPID_PRIVATE,
+#   SITE_HOSTS=snapthejob.co.uk, REDIRECT_HOSTS=www.snapthejob.co.uk, srv2079067.hstgr.cloud
 # Updating the site: push to main, then restart the project (the web container clones main on start).
 services:
   web:
@@ -11,6 +12,10 @@ services:
       - DATABASE_URL=postgres://stj:${DB_PASSWORD}@db:5432/stj
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - VAPID_PUBLIC=${VAPID_PUBLIC}
+      - VAPID_PRIVATE=${VAPID_PRIVATE}
+    volumes:
+      - backups:/backups:ro
     labels:
       caddy_0: ${SITE_HOSTS}
       caddy_0.reverse_proxy: "{{upstreams 3000}}"
@@ -18,6 +23,18 @@ services:
       caddy_1.redir: "https://snapthejob.co.uk{uri} permanent"
     networks:
       - web
+      - internal
+    depends_on:
+      - db
+    restart: unless-stopped
+  backup:
+    image: postgres:17-alpine
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    command: ["sh", "-c", "sleep 30; while true; do pg_dump -h db -U stj stj | gzip > /backups/stj-$$(date +%Y-%m-%d).sql.gz && find /backups -name 'stj-*.sql.gz' -mtime +14 -delete; sleep 86400; done"]
+    volumes:
+      - backups:/backups
+    networks:
       - internal
     depends_on:
       - db
@@ -39,3 +56,4 @@ networks:
   internal: {}
 volumes:
   pgdata: {}
+  backups: {}
