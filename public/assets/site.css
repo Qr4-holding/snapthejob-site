@@ -141,3 +141,39 @@ button{font:inherit}
   .grid:not(.list) .card .cta .share{width:40px;min-width:40px}
   .viewbar h2{font-size:19px}
 }
+
+/* full-screen player */
+.vw{position:fixed;inset:0;z-index:40;background:#000;color:#fff;display:flex;flex-direction:column}
+.vw-top{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,0))}
+.vw-x{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.14);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
+.vw-biz{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;min-width:0;padding:4px 14px 4px 4px;border-radius:26px;background:rgba(255,255,255,.12)}
+.vw-biz:hover{color:#fff;background:rgba(255,255,255,.2)}
+.vw-biz span:last-child{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.vw-biz b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vw-biz small{font-size:12px;opacity:.85}
+.vw-stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;touch-action:pan-x}
+.vw-stage video{height:100%;max-height:100dvh;max-width:100%;aspect-ratio:9/16;object-fit:contain;background:#000}
+.vw-nav{position:absolute;right:16px;width:52px;height:52px;border-radius:50%;border:none;background:rgba(255,255,255,.16);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.vw-prev{top:calc(50% - 64px)}.vw-next{top:calc(50% + 12px)}
+.vw-nav:hover,.vw-x:hover{background:rgba(255,255,255,.3)}
+.vw-bot{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:40px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.75));display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+.vw-bot>*{pointer-events:auto}
+.vw-title{font-size:20px;text-align:center;max-width:520px}
+.vw-cta{display:flex;gap:10px;width:100%;max-width:420px}
+.vw-cta .btn-red{flex:1;min-height:52px;font-size:18px;border-color:var(--red)}
+.vw-share{min-height:52px;background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5)}
+.vw-share:hover{background:rgba(255,255,255,.25);color:#fff}
+.vw-hint{font-size:13px;opacity:.75}
+@media (max-width:720px){
+  .vw-nav{display:none}
+  .vw-stage video{height:100%;width:100%;object-fit:cover}
+  .vw-share span{display:none}
+  .vw-share{width:52px;padding:0}
+}
+@media (min-width:721px){.vw-hint{display:none}}
+.vw-stage{position:relative}
+.vw-paused{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:84px;height:84px;border-radius:50%;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;pointer-events:none}
+.vw.is-paused .vw-paused{display:flex}
+@media (min-width:721px){.vw-paused{display:none!important}}
+.vw-top{position:static;background:#000}
+@media (max-width:720px){.vw-stage video{object-fit:contain;width:auto}}

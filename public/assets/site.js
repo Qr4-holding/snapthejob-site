@@ -126,7 +126,7 @@
     if (lastFocus) lastFocus.focus();
   }
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) closeWaitlist(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !ov.hidden) closeWaitlist(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !ov.hidden) { e.stopImmediatePropagation(); closeWaitlist(); } });
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -199,12 +199,12 @@
 
   function card(j) {
     return `<article class="card">
-      <a class="thumb" href="/job?j=${j.slug}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}">
+      <a class="thumb" data-play="${j.slug}" href="/job?j=${j.slug}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}">
         <img src="${j.cover}" alt="${esc(j.alt)}" loading="lazy">
         <span class="demo">DEMO</span><span class="dur">${j.dur}</span>
       </a>
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
-        <div style="min-width:0"><a class="t" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
+        <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job?j=${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
       <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
       <button class="btn share" type="button" data-share="/job?j=${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
@@ -273,4 +273,112 @@
     const more = $('#more');
     if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + ['Roofer', 'Bathrooms', 'Builder'].map(soon).join('');
   }
+
+  // ---------- full-screen player (tap a video: watch, swipe for next, close to keep browsing) ----------
+  document.body.insertAdjacentHTML('beforeend', `
+<div class="vw" id="vw" hidden role="dialog" aria-modal="true" aria-label="Video player">
+  <div class="vw-top">
+    <button class="vw-x" type="button" id="vwClose" aria-label="Close video">${svg('M15 18l-6-6 6-6', 26, '#fff')}</button>
+    <a class="vw-biz" id="vwBiz" href="#"><span class="av" id="vwAv"></span><span><b id="vwName"></b><small id="vwTrade"></small></span></a>
+  </div>
+  <div class="vw-stage" id="vwStage"><video id="vwVideo" playsinline preload="auto"></video><span class="vw-paused" aria-hidden="true">${svg('M8 5v14l11-7z', 44, '#fff')}</span></div>
+  <button class="vw-nav vw-prev" type="button" id="vwPrev" aria-label="Previous video">${svg('M18 15l-6-6-6 6', 26, '#fff')}</button>
+  <button class="vw-nav vw-next" type="button" id="vwNext" aria-label="Next video">${svg('M6 9l6 6 6-6', 26, '#fff')}</button>
+  <div class="vw-bot">
+    <div class="vw-title disp" id="vwTitle"></div>
+    <div class="vw-cta">
+      <button class="btn btn-red disp" type="button" id="vwQuote" data-waitlist="customer">Get a quote</button>
+      <button class="btn vw-share" type="button" id="vwShare" aria-label="Share this job">${svg(SHARE, 20)}<span>Share</span></button>
+    </div>
+    <div class="vw-hint" id="vwHint">Swipe up for the next job</div>
+  </div>
+</div>`);
+  const vw = $('#vw'), vid = $('#vwVideo');
+  const wide = window.matchMedia('(min-width: 721px)');
+  const setControls = () => { vid.controls = wide.matches; };
+  setControls(); if (wide.addEventListener) wide.addEventListener('change', setControls);
+  vid.addEventListener('click', () => { if (vid.controls) return; vid.paused ? vid.play() : vid.pause(); });
+  vid.addEventListener('pause', () => vw.classList.add('is-paused'));
+  vid.addEventListener('play', () => vw.classList.remove('is-paused'));
+  let list = [], idx = 0, openedHere = false, vwLast = null;
+  function show(i) {
+    idx = (i + list.length) % list.length;
+    const j = list[idx];
+    vid.src = j.video; vid.poster = j.cover;
+    vid.setAttribute('aria-label', j.alt);
+    $('#vwAv').textContent = j.initials;
+    $('#vwName').textContent = j.biz; $('#vwTrade').textContent = j.trade + ' · View job page';
+    $('#vwBiz').href = '/job?j=' + j.slug;
+    $('#vwTitle').textContent = j.title;
+    $('#vwQuote').dataset.biz = j.biz;
+    $('#vwShare').dataset.share = '/job?j=' + j.slug; $('#vwShare').dataset.title = j.title + ' by ' + j.biz;
+    $('#vwPrev').hidden = $('#vwNext').hidden = list.length < 2;
+    $('#vwHint').hidden = list.length < 2;
+    const p = vid.play(); if (p && p.catch) p.catch(() => {});
+  }
+  function openViewer(slug, slugs) {
+    list = (slugs && slugs.length ? slugs : JOBS.map(j => j.slug)).map(s => JOBS.find(j => j.slug === s)).filter(Boolean);
+    const i = Math.max(0, list.findIndex(j => j.slug === slug));
+    vwLast = document.activeElement;
+    vw.hidden = false; document.body.style.overflow = 'hidden';
+    history.pushState({ stjViewer: true }, ''); openedHere = true;
+    show(i);
+    $('#vwClose').focus();
+  }
+  function closeViewer(fromHistory) {
+    if (vw.hidden) return;
+    vid.pause(); vid.removeAttribute('src'); vid.load();
+    vw.hidden = true; document.body.style.overflow = '';
+    if (!fromHistory && openedHere) { openedHere = false; history.back(); }
+    openedHere = false;
+    if (vwLast) vwLast.focus();
+  }
+  window.addEventListener('popstate', () => closeViewer(true));
+  $('#vwClose').addEventListener('click', () => closeViewer(false));
+  $('#vwNext').addEventListener('click', () => show(idx + 1));
+  $('#vwPrev').addEventListener('click', () => show(idx - 1));
+  document.addEventListener('keydown', e => {
+    if (vw.hidden || !ov.hidden) return;
+    if (e.key === 'Escape') closeViewer(false);
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); show(idx + 1); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); show(idx - 1); }
+  });
+  let ty = null, tx = null;
+  $('#vwStage').addEventListener('touchstart', e => { ty = e.touches[0].clientY; tx = e.touches[0].clientX; }, { passive: true });
+  $('#vwStage').addEventListener('touchend', e => {
+    if (ty === null) return;
+    const dy = e.changedTouches[0].clientY - ty, dx = e.changedTouches[0].clientX - tx; ty = null;
+    if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) && list.length > 1) show(idx + (dy < 0 ? 1 : -1));
+  }, { passive: true });
+  vid.addEventListener('ended', () => { if (list.length > 1) show(idx + 1); else { vid.currentTime = 0; } });
+  // the quote popup sits on top of the player
+  $('#vwQuote').addEventListener('click', () => vid.pause());
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-play]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    const scope = a.closest('.grid') || document;
+    const slugs = [...new Set([...scope.querySelectorAll('[data-play]')].map(x => x.dataset.play))];
+    openViewer(a.dataset.play, slugs);
+  });
+
+  // ---------- contact page ----------
+  const cf = $('#contactForm');
+  if (cf) cf.addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = $('#cErr');
+    const data = { website: cf.website.value, name: cf.name.value, email: cf.email.value, topic: cf.topic.value, message: cf.message.value };
+    if (!data.name.trim()) return (err.textContent = 'Please add your name.', cf.name.focus());
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email.trim())) return (err.textContent = 'Please add a valid email address.', cf.email.focus());
+    if (data.message.trim().length < 2) return (err.textContent = 'Please write a message.', cf.message.focus());
+    err.textContent = '';
+    const b = $('#cSend'); b.disabled = true; b.textContent = 'Sending…';
+    try {
+      const r = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'Something went wrong. Please try again.');
+      cf.hidden = true; $('#cDone').hidden = false;
+    } catch (ex) { err.textContent = ex.message; }
+    finally { b.disabled = false; b.textContent = 'Send message'; }
+  });
 })();

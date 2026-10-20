@@ -42,6 +42,14 @@ async function initDb(tries = 30) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`);
       await pool.query('CREATE INDEX IF NOT EXISTS waitlist_created ON waitlist (created_at DESC)');
+      await pool.query(`CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        topic TEXT,
+        message TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`);
       console.log('Database ready');
       return;
     } catch (e) {
@@ -100,6 +108,23 @@ app.post('/api/waitlist', express.json({ limit: '10kb' }), async (req, res) => {
   }
 });
 
+app.post('/api/contact', express.json({ limit: '20kb' }), async (req, res) => {
+  const b = req.body || {};
+  if (b.website) return res.json({ ok: true });
+  if (limited(req.ip)) return res.status(429).json({ ok: false, error: 'Too many tries. Please try again later.' });
+  const name = clean(b.name, 120), email = clean(b.email, 200).toLowerCase(), topic = clean(b.topic, 80), message = clean(b.message, 4000);
+  if (!name || !EMAIL.test(email) || message.length < 2) {
+    return res.status(400).json({ ok: false, error: 'Please add your name, a valid email and a message.' });
+  }
+  try {
+    await pool.query('INSERT INTO messages (name,email,topic,message) VALUES ($1,$2,$3,$4)', [name, email, topic, message]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // ---------- admin (owner only) ----------
 function auth(req, res, next) {
   const [type, value] = (req.headers.authorization || '').split(' ');
@@ -113,11 +138,17 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 app.get('/admin', auth, async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 1000');
+  const msgs = (await pool.query('SELECT * FROM messages ORDER BY created_at DESC LIMIT 500')).rows;
+  const when = d => esc(new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London' }));
+  const mtr = msgs.map(m => `<tr><td>${when(m.created_at)}</td><td>${esc(m.topic)}</td><td>${esc(m.name)}</td><td>${esc(m.email)}</td><td style="white-space:pre-wrap">${esc(m.message)}</td></tr>`).join('');
   const count = k => rows.filter(r => r.kind === k).length;
   const tr = rows.map(r => `<tr><td>${esc(new Date(r.created_at).toLocaleString('en-GB', { timeZone: 'Europe/London' }))}</td><td>${r.kind === 'trade' ? '<b>Trade</b>' : 'Customer'}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.business)}</td><td>${esc(r.trade)}</td><td>${esc(r.town)}</td><td>${esc(r.postcode)}</td><td>${esc(r.gallery)}</td><td>${esc(r.job)}</td><td>${esc(r.source_page)}</td></tr>`).join('');
   res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Waiting list · SnapTheJob</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff}h1{margin:0 0 4px}.k{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.k div{border:1px solid #D9381E;border-radius:12px;padding:10px 16px}.k b{font-size:24px;display:block}a.b{display:inline-block;background:#D9381E;color:#fff;padding:10px 16px;border-radius:20px;text-decoration:none;font-weight:700}.w{overflow-x:auto;margin-top:14px}table{border-collapse:collapse;font-size:14px;min-width:900px}th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top}th{background:#FDF1EE}</style></head>
-<body><h1>Waiting list</h1><div class="k"><div><b>${rows.length}</b>Total</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div></div>
+<body><h1>Waiting list</h1><div class="k"><div><b>${rows.length}</b>Total</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div><div><b>${msgs.length}</b>Messages</div></div>
+<h2 style="margin:18px 0 0">Contact messages</h2>
+<div class="w"><table><thead><tr><th>When</th><th>Topic</th><th>Name</th><th>Email</th><th>Message</th></tr></thead><tbody>${mtr || '<tr><td colspan="5">No messages yet.</td></tr>'}</tbody></table></div>
+<h2 style="margin:24px 0 8px">Sign-ups</h2>
 <a class="b" href="/admin/waitlist.csv">Download as CSV</a>
 <div class="w"><table><thead><tr><th>When</th><th>Type</th><th>Name</th><th>Email</th><th>Business</th><th>Trade</th><th>Town</th><th>Postcode</th><th>Old jobs</th><th>Job / notes</th><th>From page</th></tr></thead><tbody>${tr || '<tr><td colspan="11">No sign-ups yet.</td></tr>'}</tbody></table></div></body></html>`);
 });
