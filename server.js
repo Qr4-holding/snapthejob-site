@@ -169,7 +169,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 // ---------- static site ----------
 app.use('/media', express.static(path.join(__dirname, 'public/media'), { maxAge: '7d' }));
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '5m' }));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1m' }));
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public/index.html')));
 
 initDb().then(() => app.listen(PORT, () => console.log('SnapTheJob on port ' + PORT))).catch(e => { console.error(e); process.exit(1); });

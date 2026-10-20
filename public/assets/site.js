@@ -286,11 +286,11 @@
   <button class="vw-nav vw-next" type="button" id="vwNext" aria-label="Next video">${svg('M6 9l6 6 6-6', 26, '#fff')}</button>
   <div class="vw-bot">
     <div class="vw-title disp" id="vwTitle"></div>
+    <div class="vw-hint" id="vwHint" aria-hidden="true">${svg('M6 15l6-6 6 6', 22, '#fff')}<span>Swipe up for next</span></div>
     <div class="vw-cta">
       <button class="btn btn-red disp" type="button" id="vwQuote" data-waitlist="customer">Get a quote</button>
-      <button class="btn vw-share" type="button" id="vwShare" aria-label="Share this job">${svg(SHARE, 20)}<span>Share</span></button>
+      <button class="btn vw-share disp" type="button" id="vwShare">${svg(SHARE, 20)}Share</button>
     </div>
-    <div class="vw-hint" id="vwHint">Swipe up for the next job</div>
   </div>
 </div>`);
   const vw = $('#vw'), vid = $('#vwVideo');
