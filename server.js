@@ -1,4 +1,4 @@
-// SnapTheJob public site + waiting list API
+// Public site + waiting list API. One codebase, several brands: SKIN picks skins/<id>/skin.json (default snapthejob).
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
@@ -7,12 +7,16 @@ const fs = require('fs');
 const webpush = require('web-push');
 
 const PORT = process.env.PORT || 3000;
+const SKIN_ID = /^[a-z0-9-]+$/.test(process.env.SKIN || '') ? process.env.SKIN : 'snapthejob';
+const SKIN = JSON.parse(fs.readFileSync(path.join(__dirname, 'skins', SKIN_ID, 'skin.json'), 'utf8'));
+const SKIN_PUBLIC = path.join(__dirname, 'skins', SKIN_ID, 'public');
+const ORIGIN = (process.env.ORIGIN || SKIN.origin).replace(/\/$/, '');
 let ADMIN_USER = process.env.ADMIN_USER || 'admin'; // the owner can change it in /admin
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
 const PUSH_ON = !!(VAPID_PUBLIC && process.env.VAPID_PRIVATE);
-if (PUSH_ON) webpush.setVapidDetails('https://snapthejob.co.uk/contact', VAPID_PUBLIC, process.env.VAPID_PRIVATE);
+if (PUSH_ON) webpush.setVapidDetails(ORIGIN + '/contact', VAPID_PUBLIC, process.env.VAPID_PRIVATE);
 const BACKUP_DIR = '/backups';
 
 const app = express();
@@ -27,6 +31,20 @@ app.use((req, res, next) => {
     'Permissions-Policy': 'camera=(), geolocation=()'
   });
   next();
+});
+
+// ---------- private preview: set PREVIEW_KEY and only people with the link ?preview=<key> can see the site ----------
+const PREVIEW_KEY = process.env.PREVIEW_KEY || '';
+if (PREVIEW_KEY) app.use((req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  if (req.path.startsWith('/admin') || req.path === '/health') return next();
+  if (req.query.preview === PREVIEW_KEY) {
+    res.set('Set-Cookie', `preview=${encodeURIComponent(PREVIEW_KEY)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+    return res.redirect(302, req.path);
+  }
+  const ck = (req.get('cookie') || '').split(/;\s*/).find(c => c.startsWith('preview='));
+  if (ck && decodeURIComponent(ck.slice(8)) === PREVIEW_KEY) return next();
+  res.status(401).set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${SKIN.name}</title></head><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#111214"><div style="text-align:center;padding:16px"><h1 style="margin:0 0 8px">${SKIN.name}</h1><p>Coming soon. This is a private preview.</p></div></body></html>`);
 });
 
 // ---------- database ----------
@@ -200,6 +218,13 @@ async function sendPush(target, payload) {
 }
 
 // ---------- admin (owner only) ----------
+// admin pages are written in SnapTheJob colours; other skins swap the name and colours on the way out
+const ADMIN_SWAP = SKIN.id === 'snapthejob' ? null : [['SnapTheJob', SKIN.name], ...Object.entries((SKIN.admin || {}).colours || {})];
+if (ADMIN_SWAP) app.use('/admin', (req, res, next) => {
+  const send = res.send.bind(res);
+  res.send = body => send(typeof body === 'string' ? ADMIN_SWAP.reduce((b, [a, z]) => b.split(a).join(z), body) : body);
+  next();
+});
 let adminHash = null; // set when the owner changes the password in /admin
 function hashPw(pw, salt = crypto.randomBytes(16).toString('hex')) {
   return salt + ':' + crypto.scryptSync(pw, salt, 64).toString('hex');
@@ -222,7 +247,7 @@ function auth(req, res, next) {
     if (u === ADMIN_USER && checkPw(p.join(':'))) return next();
     f.push(Date.now()); fails.set(req.ip, f);
   }
-  res.set('WWW-Authenticate', 'Basic realm="SnapTheJob admin"').status(401).send('Sign in required');
+  res.set('WWW-Authenticate', `Basic realm="${SKIN.name} admin"`).status(401).send('Sign in required');
 }
 // stop other websites posting forms to the admin
 function sameOrigin(req, res, next) {
@@ -234,7 +259,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 
 const slugify = t => String(t).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 function listBackups() {
-  try { return fs.readdirSync(BACKUP_DIR).filter(f => /^stj-[\d-]+\.sql\.gz$/.test(f)).sort().reverse(); } catch (e) { return []; }
+  try { return fs.readdirSync(BACKUP_DIR).filter(f => /^[a-z]+-[\d-]+\.sql\.gz$/.test(f)).sort().reverse(); } catch (e) { return []; }
 }
 app.get('/admin', auth, async (req, res, next) => { try {
   const { rows } = await pool.query('SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 1000');
@@ -242,8 +267,8 @@ app.get('/admin', auth, async (req, res, next) => { try {
   const pf = (await pool.query('SELECT target, count(*)::int n FROM push_follows GROUP BY target')).rows;
   const ef = (await pool.query('SELECT target, count(*)::int n FROM email_follows GROUP BY target')).rows;
   const people = (await pool.query('SELECT (SELECT count(DISTINCT endpoint) FROM push_follows)::int p, (SELECT count(DISTINCT email) FROM email_follows)::int e')).rows[0];
-  const targets = [...new Set(['snapthejob', ...JOBS.map(j => slugify(j.biz)), ...pf.map(r => r.target), ...ef.map(r => r.target)])];
-  const nameOf = t => t === 'snapthejob' ? 'SnapTheJob (everything)' : (JOBS.find(j => slugify(j.biz) === t) || {}).biz || t;
+  const targets = [...new Set([SKIN.id, ...JOBS.map(j => slugify(j.biz)), ...pf.map(r => r.target), ...ef.map(r => r.target)])];
+  const nameOf = t => t === SKIN.id ? SKIN.name + ' (everything)' : (JOBS.find(j => slugify(j.biz) === t) || {}).biz || t;
   const ftr = targets.map(t => { const n = (pf.find(r => r.target === t) || { n: 0 }).n; return `<tr><td>${esc(nameOf(t))}</td><td>${n}</td><td>${(ef.find(r => r.target === t) || { n: 0 }).n}</td><td>${n ? `<form method="post" action="/admin/delete" onsubmit="return confirm('Remove all phone followers of this business? They will stop getting alerts.')" style="margin:0"><input type="hidden" name="what" value="phones"><input type="hidden" name="id" value="${esc(t)}"><button class="del" type="submit">Remove phone followers</button></form>` : ''}</td></tr>`; }).join('');
   const emails = (await pool.query('SELECT email, target, created_at FROM email_follows ORDER BY created_at DESC LIMIT 500')).rows;
   const etr = emails.map(e => `<tr><td>${when(e.created_at)}</td><td>${esc(e.email)}</td><td>${esc(nameOf(e.target))}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this email follower?')" style="margin:0"><input type="hidden" name="what" value="email"><input type="hidden" name="id" value="${esc(e.email + "|" + e.target)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
@@ -286,7 +311,7 @@ ${mini(devices, 'Device', r => r.device)}
   const opts = ['everyone', ...targets].map(t => `<option value="${esc(t)}">${t === 'everyone' ? 'Everyone who allowed alerts' : esc(nameOf(t)) + ' followers'}</option>`).join('');
   res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin · SnapTheJob</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}h1{margin:0 0 4px}h2{margin:28px 0 8px}.k{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.k div{border:1px solid #D9381E;border-radius:12px;padding:10px 16px}.k b{font-size:24px;display:block}a.b,button{display:inline-block;background:#D9381E;color:#fff;padding:10px 16px;border-radius:20px;text-decoration:none;font-weight:700;border:none;font:inherit;font-weight:700;cursor:pointer}.w{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;font-size:14px;min-width:600px}th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top}th{background:#FDF1EE}button.del{background:#fff;color:#A1260F;border:1px solid #F0B8AE;padding:6px 12px;font-size:13px}button.del:hover{background:#FDF1EE}form.card{border:1px solid #F0B8AE;border-radius:14px;padding:14px;display:grid;gap:10px;max-width:560px}label{display:grid;gap:4px;font-weight:600;font-size:14px}input,select,textarea{font:inherit;padding:10px;border:1px solid #C9CBC5;border-radius:10px}.flash{background:#FDF1EE;border:1px solid #D9381E;border-radius:12px;padding:10px 14px;font-weight:600}.n{color:#5E6168;font-size:14px}</style></head>
-<body><nav style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><a href="/admin" style="padding:8px 14px;border-radius:18px;background:#1F2124;color:#fff;text-decoration:none;font-weight:600">Overview</a><a href="/admin/jobs" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Jobs: add videos</a><a href="/" target="_blank" rel="noopener" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">View site</a></nav><h1>SnapTheJob admin</h1>
+<body><nav style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><a href="/admin" style="padding:8px 14px;border-radius:18px;background:#1F2124;color:#fff;text-decoration:none;font-weight:600">Overview</a><a href="/admin/jobs" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Jobs: add videos</a>${SKIN.quote ? '<a href="/admin/quotes" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Quote requests</a>' : ''}<a href="/" target="_blank" rel="noopener" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">View site</a></nav><h1>SnapTheJob admin</h1>
 ${flash ? `<p class="flash">${esc(flash)}${sentInfo}</p>` : ''}
 <div class="k"><div><b>${rows.length}</b>Waiting list</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div><div><b>${msgs.length}</b>Messages</div><div><b>${people.p}</b>Phones with alerts on</div><div><b>${people.e}</b>Email followers</div></div>
 
@@ -373,11 +398,11 @@ app.get('/admin/waitlist.csv', auth, async (req, res) => {
     return '"' + s.replace(/"/g, '""') + '"';
   };
   const csv = [cols.join(','), ...rows.map(r => cols.map(c => q(r[c])).join(','))].join('\r\n');
-  res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="snapthejob-waitlist.csv"', 'Cache-Control': 'no-store' }).send(csv);
+  res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${SKIN.id}-waitlist.csv"`, 'Cache-Control': 'no-store' }).send(csv);
 });
 
 // ---------- private visitor stats (no cookies; visitors counted with a daily-changing anonymous code) ----------
-const EV_TYPES = new Set(['view', 'play', 'share', 'share_app', 'quote', 'follow', 'trade']);
+const EV_TYPES = new Set(['view', 'play', 'share', 'share_app', 'quote', 'quote_sent', 'follow', 'trade']);
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor|curl|wget/i;
 let saltDay = '', salt = '';
 function visitorCode(req) {
@@ -393,7 +418,7 @@ app.post('/api/e', express.text({ type: '*/*', limit: '2kb' }), (req, res) => {
   if (!EV_TYPES.has(b.t)) return;
   let ref = clean(b.r, 300);
   try { ref = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) { ref = ''; }
-  if (ref === 'snapthejob.co.uk') ref = '';
+  if (ref === new URL(ORIGIN).hostname.replace(/^www\./, '')) ref = '';
   const device = /Mobi|Android|iPhone/i.test(ua) ? 'Phone' : /iPad|Tablet/i.test(ua) ? 'Tablet' : 'Computer';
   pool.query('INSERT INTO events (type,path,job,detail,ref,device,visitor) VALUES ($1,$2,$3,$4,$5,$6,$7)',
     [b.t, clean(b.p, 200), clean(b.j, 80), clean(b.d, 80), ref, device, visitorCode(req)]).catch(() => {});
@@ -403,26 +428,42 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 // ---------- jobs, trades and search-engine pages ----------
 let JOBS = []; // loaded from the database (see jobs-admin.js)
-const TRADES = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/trades.json'), 'utf8'));
+const TRADES = SKIN.categories.map(c => c.name);
 const tradeSlug = t => slugify(t);
-const ORIGIN = 'https://snapthejob.co.uk';
+const CAT = SKIN.catPath || 'trades';
 let jobsJs = 'window.STJ_JOBS = [];';
-const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES,
+const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN,
   onChange: list => { JOBS = list; jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(list).replace(/</g, '\\u003c') + ';'; } });
+const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS }) : null;
 app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=60' }).send(jobsJs));
 
-const tpl = { index: fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8'), job: fs.readFileSync(path.join(__dirname, 'public/job.html'), 'utf8') };
-const tradeLinks = '<nav class="tradelinks" aria-label="All trades"><b>Browse trades:</b> ' +
-  TRADES.map(t => `<a href="/trades/${tradeSlug(t)}">${esc(t)}</a>`).join(' · ') + '</nav>';
+// page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
+const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
+  logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
+const TOKENS = {
+  ID: SKIN.id, NAME: esc(SKIN.name), THEME: SKIN.theme, FONTS: SKIN.fonts, LOGO_WORD: SKIN.logoWord, DESC: esc(SKIN.desc), OG_IMAGE: SKIN.ogImage,
+  SEARCH_PH: esc(SKIN.searchPlaceholder), SEARCH_LABEL: esc(SKIN.searchLabel), CHIPS_LABEL: esc(SKIN.chipsLabel), FEED_TITLE: esc(SKIN.feedTitle),
+  DISCLAIMER: SKIN.disclaimer, HEADER_ACTIONS: SKIN.headerActions, TABBAR: SKIN.tabbar, BODY_END: SKIN.bodyEnd || '',
+  I_AM: esc((SKIN.copy || {}).iAm || "I'm a trade"),
+  HEAD: (SKIN.css ? `<link rel="stylesheet" href="${SKIN.css}">\n` : '') + `<script>window.SITE = ${JSON.stringify(SITE_JS).replace(/</g, '\\u003c')};</script>`
+};
+const brand = html => html.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => k in TOKENS ? TOKENS[k] : m);
+function readTpl(name) {
+  const own = path.join(SKIN_PUBLIC, name);
+  return brand(fs.readFileSync(fs.existsSync(own) ? own : path.join(__dirname, 'public', name), 'utf8'));
+}
+const tpl = { index: readTpl('index.html'), job: readTpl('job.html'), contact: readTpl('contact.html'), privacy: readTpl('privacy.html') };
+const tradeLinks = `<nav class="tradelinks" aria-label="${esc(SKIN.browseAria || 'All trades')}"><b>${esc(SKIN.browseLabel || 'Browse trades:')}</b> ` +
+  TRADES.map(t => `<a href="/${CAT}/${tradeSlug(t)}">${esc(t)}</a>`).join(' · ') + '</nav>';
 function page(html, { title, desc, url, image, extra = '' }) {
   return html
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
     .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(title)}">`)
     .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(desc)}">`)
-    .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${ORIGIN}${image || '/media/ps-plastering.jpg'}">
+    .replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${ORIGIN}${image || SKIN.ogImage}">
 <meta property="og:url" content="${ORIGIN}${url}">
-<meta property="og:site_name" content="SnapTheJob">
+<meta property="og:site_name" content="${esc(SKIN.name)}">
 <link rel="canonical" href="${ORIGIN}${url}">
 <meta name="twitter:card" content="summary_large_image">${extra}`)
     .replace('<!--TRADE_LINKS-->', tradeLinks);
@@ -432,20 +473,21 @@ const isoDur = d => { const [m, s] = d.split(':').map(Number); return `PT${m ? m
 
 app.get(['/', '/index.html'], (req, res) => {
   res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
-    title: 'SnapTheJob · Before and after videos from UK trades',
-    desc: 'Watch real before and after videos of jobs by local plumbers, builders, plasterers, roofers, waste removal and more. Then get a quote.',
+    title: SKIN.homeTitle,
+    desc: SKIN.homeDesc,
     url: '/',
-    extra: ld({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'SnapTheJob', url: ORIGIN + '/', potentialAction: { '@type': 'SearchAction', target: ORIGIN + '/?q={search_term_string}', 'query-input': 'required name=search_term_string' } })
+    extra: ld({ '@context': 'https://schema.org', '@type': 'WebSite', name: SKIN.name, url: ORIGIN + '/', potentialAction: { '@type': 'SearchAction', target: ORIGIN + '/?q={search_term_string}', 'query-input': 'required name=search_term_string' } })
   }));
 });
-app.get('/trades/:t', (req, res, next) => {
+const fill = (s, t) => s.replace('{cat}', t).replace('{cat_lc}', t.toLowerCase());
+app.get(`/${CAT}/:t`, (req, res, next) => {
   const t = TRADES.find(x => tradeSlug(x) === req.params.t);
   if (!t) return next();
   const n = JOBS.filter(j => j.trade === t).length;
   res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
-    title: `${t} before and after videos · SnapTheJob`,
-    desc: n ? `Watch before and after videos of real ${t.toLowerCase()} jobs by local trades, then get a quote.` : `Before and after videos of ${t.toLowerCase()} jobs are coming soon to SnapTheJob. Trades: be the first to post yours.`,
-    url: `/trades/${tradeSlug(t)}`
+    title: fill(SKIN.catPageTitle, t),
+    desc: fill(n ? SKIN.catPageDesc : SKIN.catPageDescEmpty, t),
+    url: `/${CAT}/${tradeSlug(t)}`
   }));
 });
 app.get(['/job', '/job.html'], (req, res) => {
@@ -455,8 +497,8 @@ app.get(['/job', '/job.html'], (req, res) => {
 app.get('/job/:slug', (req, res, next) => {
   const j = JOBS.find(x => x.slug === req.params.slug);
   if (!j) return next();
-  const title = `${j.title} by ${j.biz} · SnapTheJob`;
-  const desc = j.description || `Before and after video by ${j.biz}, ${j.trade}. Watch it on SnapTheJob.`;
+  const title = `${j.title} by ${j.biz} · ${SKIN.name}`;
+  const desc = j.description || `Before and after video by ${j.biz}, ${j.trade}. Watch it on ${SKIN.name}.`;
   res.set('Cache-Control', 'public, max-age=60').send(page(tpl.job, {
     title, desc, url: `/job/${j.slug}`, image: j.cover,
     extra: `\n<meta property="og:type" content="video.other">\n<meta property="og:video" content="${ORIGIN}${j.video}">` + ld({
@@ -464,29 +506,44 @@ app.get('/job/:slug', (req, res, next) => {
       name: `${j.title} by ${j.biz}`, description: desc,
       thumbnailUrl: [ORIGIN + j.cover], uploadDate: j.date, duration: isoDur(j.dur),
       contentUrl: ORIGIN + (j.playVideo || j.video), embedUrl: `${ORIGIN}/job/${j.slug}`,
-      publisher: { '@type': 'Organization', name: 'SnapTheJob', logo: { '@type': 'ImageObject', url: ORIGIN + '/assets/icon-512.png' } }
+      publisher: { '@type': 'Organization', name: SKIN.name, logo: { '@type': 'ImageObject', url: ORIGIN + '/assets/icon-512.png' } }
     })
   }));
 });
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
-  const urls = ['/', ...TRADES.map(t => `/trades/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/contact', '/privacy'];
+  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/contact', '/privacy'];
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
     urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
 });
 
 // ---------- static site ----------
+const sendPage = name => (req, res) => res.set('Cache-Control', 'public, max-age=60').send(page(tpl[name], {
+  title: `${name === 'contact' ? 'Contact' : 'Privacy'} · ${SKIN.name}`, desc: name === 'contact' ? `Get in touch with ${SKIN.name}.` : `How ${SKIN.name} uses your details.`, url: '/' + name }));
+app.get(['/contact', '/contact.html'], sendPage('contact'));
+app.get(['/privacy', '/privacy.html'], sendPage('privacy'));
+app.get('/manifest.json', (req, res) => {
+  const m = JSON.parse(fs.readFileSync(path.join(__dirname, 'public/manifest.json'), 'utf8'));
+  if (SKIN.id !== 'snapthejob') Object.assign(m, { name: SKIN.name, short_name: SKIN.name, description: SKIN.desc, theme_color: SKIN.theme });
+  res.set('Cache-Control', 'public, max-age=3600').json(m);
+});
+const swJs = fs.readFileSync(path.join(__dirname, 'public/sw.js'), 'utf8').replace(/SnapTheJob/g, SKIN.name.replace(/[^A-Za-z0-9 ]/g, ''));
+app.get('/sw.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(swJs));
+if (SKIN.id !== 'snapthejob') app.get('/signature.html', (req, res) => res.redirect(302, '/')); // SnapTheJob's email signature only
+app.use('/media', express.static(path.join(SKIN_PUBLIC, 'media'), { maxAge: '7d' }));
 app.use('/media', express.static(path.join(__dirname, 'public/media'), { maxAge: '7d' }));
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'], maxAge: '1m' }));
-app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public/index.html')));
+app.use(express.static(SKIN_PUBLIC, { extensions: [], index: false, maxAge: '1m' }));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: SKIN.id === 'snapthejob' ? ['html'] : [], index: false, maxAge: '1m' }));
+app.use((req, res) => res.status(404).send(page(tpl.index, { title: SKIN.homeTitle, desc: SKIN.homeDesc, url: '/' })));
 
 process.on('unhandledRejection', e => console.error('Unhandled:', e && e.message));
 app.use((err, req, res, next) => { console.error(err); res.status(500).send('Something went wrong. Please try again.'); });
 initDb().then(async () => {
   await jobsAdmin.init();
+  if (quotes) await quotes.init();
   const r = await pool.query("SELECT value FROM settings WHERE key='admin_hash'");
   if (r.rows[0]) adminHash = r.rows[0].value;
   const u = await pool.query("SELECT value FROM settings WHERE key='admin_user'");
   if (u.rows[0]) ADMIN_USER = u.rows[0].value;
-}).then(() => app.listen(PORT, () => console.log('SnapTheJob on port ' + PORT))).catch(e => { console.error(e); process.exit(1); });
+}).then(() => app.listen(PORT, () => console.log(SKIN.name + ' on port ' + PORT))).catch(e => { console.error(e); process.exit(1); });

@@ -3,35 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Contact · SnapTheJob</title>
-<meta name="description" content="Get in touch with SnapTheJob.">
-<meta name="theme-color" content="#D9381E">
-<meta property="og:title" content="Contact · SnapTheJob">
-<meta property="og:description" content="Get in touch with SnapTheJob.">
-<meta property="og:image" content="/media/ps-plastering.jpg">
+<title>Contact · {{NAME}}</title>
+<meta name="description" content="Get in touch with {{NAME}}.">
+<meta name="theme-color" content="{{THEME}}">
+<meta property="og:title" content="Contact · {{NAME}}">
+<meta property="og:description" content="Get in touch with {{NAME}}.">
+<meta property="og:image" content="{{OG_IMAGE}}">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="{{FONTS}}" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=11">
+{{HEAD}}
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="logo" href="/" aria-label="SnapTheJob home">
+<a class="logo" href="/" aria-label="{{NAME}} home">
 <span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
-<span class="word"><b class="disp">Snap<span class="red">The</span>Job</b><small class="disp"><span class="red">Before,</span> After, <span class="red">Share.</span></small></span>
+{{LOGO_WORD}}
 </a>
 <form class="search" id="searchForm" action="/" role="search">
-<label class="sr" for="q">Search jobs and trades</label>
-<input id="q" name="q" type="search" placeholder="Search: plasterer, clearance, roof…">
+<label class="sr" for="q">{{SEARCH_LABEL}}</label>
+<input id="q" name="q" type="search" placeholder="{{SEARCH_PH}}">
 <button type="submit" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
 </form>
-<div class="actions">
-<button class="btn btn-red" type="button" data-waitlist="trade">I'm a trade</button>
-<button class="btn hide-s" type="button" data-waitlist="customer">Get 3 quotes</button>
-</div>
+{{HEADER_ACTIONS}}
 </div></header>
 <main class="wrap" style="max-width:640px;padding-top:24px;padding-bottom:20px">
 <h1 class="disp" style="font-size:38px;margin:0 0 6px">Contact us</h1>
@@ -43,7 +41,7 @@
 <label class="f">Email<input name="email" type="email" autocomplete="email" inputmode="email"></label>
 </div>
 <label class="f">What's it about?<select name="topic">
-<option>General question</option><option>I'm a trade</option><option>See, change or delete my details</option><option>Unsubscribe me</option><option>Press or partnership</option><option>Report a video</option>
+<option>General question</option><option>{{I_AM}}</option><option>See, change or delete my details</option><option>Unsubscribe me</option><option>Press or partnership</option><option>Report a video</option>
 </select></label>
 <label class="f">Message<textarea name="message" style="min-height:140px"></textarea></label>
 <div class="err" id="cErr" role="alert"></div>
@@ -54,19 +52,16 @@
 <span class="tick"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span>
 <span class="disp" style="font-size:26px">Message sent</span>
 <span style="font-size:16px">Thanks. We'll reply by email.</span>
-<a class="btn" href="/">Back to SnapTheJob</a>
+<a class="btn" href="/">Back to {{NAME}}</a>
 </div>
 </main>
 <footer class="foot"><div class="wrap">
-<p style="margin:0 0 6px">Videos are posted by the businesses themselves. SnapTheJob hosts them but does not check, vouch for or endorse any work shown.</p>
-<p style="margin:0"><a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · © 2026 SnapTheJob</p>
+{{DISCLAIMER}}
+<p style="margin:0"><a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · © 2026 {{NAME}}</p>
 </div></footer>
-<nav class="tabbar" aria-label="Main">
-<a href="/"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
-<button type="button" class="snap" data-waitlist="trade" aria-label="I'm a trade: snap a job"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
-<button type="button" data-waitlist="customer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>Quotes</button>
-</nav>
+{{TABBAR}}
 <script src="/assets/jobs.js?v=11"></script>
 <script src="/assets/site.js?v=11"></script>
+{{BODY_END}}
 </body>
 </html>

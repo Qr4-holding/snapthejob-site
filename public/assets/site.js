@@ -1,30 +1,25 @@
-/* SnapTheJob front end */
+/* Front end shared by every skin (SnapTheJob, CleanUpSnap…). Brand and wording come from window.SITE. */
 (function () {
   'use strict';
 
-  // ---------- data ----------
-  const ICON = {
-    'All': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    'Emergency': 'M12 3l10 18H2zM12 10v5M12 18h.01',
-    'Plumber': 'M3 9h9a4 4 0 014 4v2M8 9V5M5 5h6M16 19v2',
-    'Electrician': 'M13 2L4 14h7l-1 8 9-12h-7z',
-    'Roofer': 'M2 13l10-8 10 8M5 11v9h14v-9',
-    'Builder': 'M3 6h18v12H3zM3 12h18M9 6v6M15 12v6',
-    'Gardener': 'M12 21v-8M12 13c0-4-3-6-7-6 0 4 3 6 7 6zM12 11c0-3 2-5 6-5 0 3-2 5-6 5zM7 21h10',
-    'Painter / Decorator': 'M5 4h12v5H5zM17 6h2v6h-7v3M11 15h2v6h-2z',
-    'Landscaper': 'M12 22v-6M12 16a6 6 0 006-6c0-4-3-7-6-8-3 1-6 4-6 8a6 6 0 006 6z',
-    'Waste Management': 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 21a2 2 0 100-4 2 2 0 000 4zM17 21a2 2 0 100-4 2 2 0 000 4z',
-    'Carpenter': 'M14 6l4 4M3 21l9-9M11 5l4-2 6 6-2 4z',
-    'Plasterer': 'M3 14h13l5-5H8zM12 14v3M10 17h4v4h-4z',
-    'Driveways / Patios / Paths': 'M8 3L4 21M16 3l4 18M12 5v3M12 11v3M12 17v3',
-    'Fencing / Gates': 'M5 21V6l2-3 2 3v15M15 21V6l2-3 2 3v15M3 10h18M3 16h18',
-    'Tree Surgeon': 'M12 22V13M6 13h12L12 3z',
-    'Bathrooms': 'M3 12h18v3a5 5 0 01-5 5H8a5 5 0 01-5-5zM6 12V6a2 2 0 014 0M7 20l-1 2M17 20l1 2',
-    'Tiler - Tiling': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    'Central Heating': 'M5 5v14M9 5v14M13 5v14M17 5v14M3 19h18'
-  };
+  // ---------- data: brand, categories and wording come from the skin (window.SITE) ----------
+  const SITE = window.SITE || { id: 'snapthejob', name: 'SnapTheJob', catPath: 'trades', categories: [], soon: [], moreSoon: [], copy: {} };
+  const NAME = SITE.name;
+  const ICON = { All: SITE.allIcon };
+  (SITE.categories || []).forEach(c => { ICON[c.name] = c.icon; });
+  const TRADES = (SITE.categories || []).map(c => c.name);
+  const CAT = SITE.catPath || 'trades';
+  const C = Object.assign({
+    iAm: "I'm a trade", sideTrade: "I'm a trade", sideQuote: 'Get 3 quotes', sideHead: 'Trades',
+    soonBtn: 'Join as a trade', soonAria: 'join the trade waiting list', soonSub: 'Be the first on ' + NAME,
+    emptyBtn: 'Get on the quotes waiting list', emptySub: "We're adding trades every week.", crumbRoot: 'Jobs',
+    tradeTitle: 'Get your jobs on ' + NAME,
+    tradeIntro: "We're opening to trades soon. Join the waiting list for early access, with your first 3 quote requests free.",
+    tradeConsent: 'Email me about early access to ' + NAME + '. I can unsubscribe at any time.',
+    tradeLabel: 'Your trade', galleryLabel: 'How many old before/after jobs are on your phone?',
+    shareTag: ' · Before, After, Share. on ' + NAME, hashtags: '#BeforeAndAfter #' + NAME.replace(/\W/g, '')
+  }, SITE.copy || {});
 
-  const TRADES = Object.keys(ICON).filter(t => t !== 'All');
   const SHARE = 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13';
 
   const JOBS = window.STJ_JOBS || [];
@@ -62,13 +57,13 @@
       </div>
       <div data-for="trade" class="row">
         <label class="f">Business name<input name="business" autocomplete="organization"></label>
-        <label class="f">Your trade<select name="trade"><option value="">Choose…</option>${tradeOptions}</select></label>
+        <label class="f">${esc(C.tradeLabel)}<select name="trade"><option value="">Choose…</option>${tradeOptions}</select></label>
       </div>
       <div class="row">
         <label class="f" data-for="trade">Town<input name="town" autocomplete="address-level2"></label>
         <label class="f">Postcode<input name="postcode" autocomplete="postal-code" autocapitalize="characters"></label>
       </div>
-      <label class="f" data-for="trade">How many old before/after jobs are on your phone?
+      <label class="f" data-for="trade">${esc(C.galleryLabel)}
         <select name="gallery"><option value="">Choose…</option><option>None yet</option><option>1–10</option><option>11–50</option><option>50+</option></select>
       </label>
       <label class="f" data-for="customer">What job do you need doing? <span style="font-weight:400;color:#5E6168">(optional)</span>
@@ -83,7 +78,7 @@
       <span class="tick">${svg('M5 12l5 5 9-10', 36, '#fff')}</span>
       <span class="disp" style="font-size:26px">You're on the list</span>
       <span id="wlDoneText" style="font-size:16px;line-height:1.5"></span>
-      <button class="btn" type="button" data-close>Back to SnapTheJob</button>
+      <button class="btn" type="button" data-close>Back to ${esc(NAME)}</button>
     </div>
   </div>
 </div>`);
@@ -99,9 +94,9 @@
     form.hidden = false; $('#wlDone').hidden = true;
     form.querySelectorAll('[data-for]').forEach(el => { el.hidden = el.dataset.for !== kind; });
     if (kind === 'trade') {
-      $('#wlTitle').textContent = 'Get your jobs on SnapTheJob';
-      $('#wlIntro').textContent = "We're opening to trades soon. Join the waiting list for early access, with your first 3 quote requests free.";
-      $('#wlConsent').textContent = 'Email me about early access to SnapTheJob. I can unsubscribe at any time.';
+      $('#wlTitle').textContent = C.tradeTitle;
+      $('#wlIntro').textContent = C.tradeIntro;
+      $('#wlConsent').textContent = C.tradeConsent;
       $('#wlDoneText').textContent = "We'll email you when your early access is ready.";
       if (opts.trade) form.trade.value = opts.trade;
     } else {
@@ -159,6 +154,8 @@
     if (t && t.dataset.waitlist === 'customer') track('quote', { d: t.dataset.biz || 'home' });
     if (!t) return;
     e.preventDefault();
+    // skins with a real quote flow (e.g. Snap your rubbish) take over the customer button
+    if (t.dataset.waitlist === 'customer' && typeof window.openQuote === 'function') return window.openQuote({ biz: t.dataset.biz, brenda: 'brenda' in t.dataset });
     openWaitlist(t.dataset.waitlist, { biz: t.dataset.biz, trade: t.dataset.trade });
   });
 
@@ -180,7 +177,7 @@
     <div class="sh-vid" id="shVid">
       <button class="sh-app" type="button" data-sv="Instagram"><span style="background:linear-gradient(45deg,#F58529,#DD2A7B 50%,#8134AF)">${svg('M4 4h16v16H4zM12 16a4 4 0 100-8 4 4 0 000 8zM17 7h.01', 24, '#fff')}</span>Instagram</button>
       <button class="sh-app" type="button" data-sv="TikTok"><span style="background:#000">${svg('M14 4v10a4 4 0 11-4-4M14 4c0 3 2 5 5 5', 24, '#fff')}</span>TikTok</button>
-      <button class="sh-app" type="button" data-sv="the app you want to post to"><span style="background:#D9381E">${svg('M12 4v11M7 10l5 5 5-5M5 20h14', 24, '#fff')}</span>Save video</button>
+      <button class="sh-app" type="button" data-sv="the app you want to post to"><span style="background:var(--red)">${svg('M12 4v11M7 10l5 5 5-5M5 20h14', 24, '#fff')}</span>Save video</button>
     </div>
     <p class="sh-note" id="shNote" role="status" hidden></p>
     <div class="sh-grid" id="shGrid"></div>
@@ -195,18 +192,18 @@
   function openShare(path, title, img, video) {
     track('share', { j: (path.match(/job\/([a-z0-9-]+)/) || [])[1] || '' });
     const url = new URL(path, location.origin).href;
-    const text = title + ' · Before, After, Share. on SnapTheJob';
-    shData = { url, title, text, video, caption: `${title}. Watch it and get a quote on SnapTheJob: ${url} #BeforeAndAfter #SnapTheJob` };
+    const text = title + C.shareTag;
+    shData = { url, title, text, video, caption: `${title}. Watch it and get a quote on ${NAME}: ${url} ${C.hashtags}` };
     $('#shVid').hidden = !video; $('#shNote').hidden = true;
     // get the video file ready now, so the phone's own share (Instagram, TikTok…) opens straight away on tap
     shFile = null;
     if (video && navigator.canShare) {
       fetch(video).then(r => r.blob()).then(b => {
-        const f = new File([b], (path.split('j=')[1] || 'snapthejob') + '.mp4', { type: 'video/mp4' });
+        const f = new File([b], (path.split('j=')[1] || SITE.id) + '.mp4', { type: 'video/mp4' });
         if (navigator.canShare({ files: [f] })) shFile = f;
       }).catch(() => {});
     }
-    $('#shGrid').innerHTML = NET.map(n => `<a class="sh-app" href="${esc(n.href(url, text, new URL(img || '/media/ps-plastering.jpg', location.origin).href))}" ${n.same ? '' : 'target="_blank" rel="noopener"'}><span style="background:${n.bg}">${n.mark}</span>${n.name}</a>`).join('');
+    $('#shGrid').innerHTML = NET.map(n => `<a class="sh-app" href="${esc(n.href(url, text, new URL(img || SITE.ogImage || '/', location.origin).href))}" ${n.same ? '' : 'target="_blank" rel="noopener"'}><span style="background:${n.bg}">${n.mark}</span>${n.name}</a>`).join('');
     $('#shUrl').value = url;
     $('#shCopy').textContent = 'Copy link';
     $('#shMore').hidden = !navigator.share;
@@ -230,7 +227,7 @@
       try { await navigator.share({ files: [shFile], text: shData.caption }); return; } catch (ex) { if (ex.name === 'AbortError') return; }
     }
     // laptop (or phone without file sharing): save the video and copy the caption
-    const a = document.createElement('a'); a.href = shData.video; a.download = (shData.url.split('j=')[1] || 'snapthejob') + '.mp4';
+    const a = document.createElement('a'); a.href = shData.video; a.download = (shData.url.split('j=')[1] || SITE.id) + '.mp4';
     document.body.appendChild(a); a.click(); a.remove();
     let copied = false; try { await navigator.clipboard.writeText(shData.caption); copied = true; } catch (ex) {}
     note.textContent = `Video saved${copied ? ' and caption copied' : ''}. Open ${app}, upload the video from your downloads${copied ? ' and paste the caption' : ''}.`;
@@ -243,7 +240,7 @@
     const b = e.target.closest('[data-share]');
     if (!b) return;
     e.preventDefault();
-    openShare(b.dataset.share, b.dataset.title || 'SnapTheJob', b.dataset.img, b.dataset.video);
+    openShare(b.dataset.share, b.dataset.title || NAME, b.dataset.img, b.dataset.video);
   });
 
   // search box: filter on the home page, or go home with the query
@@ -256,7 +253,7 @@
   });
 
   // ---------- home feed ----------
-  const pathTrade = ((location.pathname.match(/^\/trades\/([a-z0-9-]+)/) || [])[1]);
+  const pathTrade = ((location.pathname.match(new RegExp('^/' + CAT + '/([a-z0-9-]+)')) || [])[1]);
   const qTrade = new URLSearchParams(location.search).get('trade');
   const state = { trade: (pathTrade && TRADES.find(t => slugify(t) === pathTrade)) || (qTrade && ICON[qTrade] ? qTrade : 'All'), q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
   try { state.view = localStorage.getItem('stj-view') || 'grid'; } catch (e) {}
@@ -275,11 +272,11 @@
   }
   function soon(trade) {
     return `<article class="card soon">
-      <button class="thumb" type="button" data-waitlist="trade" data-trade="${esc(trade)}" aria-label="${esc(trade)}: join the trade waiting list">
-        ${svg(ICON[trade] || ICON.All, 34)}<span>${esc(trade)}<br><small style="font-weight:600">Be the first on SnapTheJob</small></span>
+      <button class="thumb" type="button" data-waitlist="trade" data-trade="${esc(trade)}" aria-label="${esc(trade)}: ${esc(C.soonAria)}">
+        ${svg(ICON[trade] || ICON.All, 34)}<span>${esc(trade)}<br><small style="font-weight:600">${esc(C.soonSub)}</small></span>
       </button>
       <div class="meta"><div style="min-width:0"><span class="t">${esc(trade)}</span><span class="s">Coming soon</span></div></div>
-      <button class="btn" type="button" data-waitlist="trade" data-trade="${esc(trade)}">Join as a trade</button>
+      <button class="btn" type="button" data-waitlist="trade" data-trade="${esc(trade)}">${esc(C.soonBtn)}</button>
     </article>`;
   }
   function render() {
@@ -288,23 +285,23 @@
       (!state.q || (j.title + ' ' + j.biz + ' ' + j.trade + ' ' + j.services.join(' ')).toLowerCase().includes(state.q)));
     let html = jobs.map(card).join('');
     if (state.trade === 'All' && !state.q) {
-      html += ['Emergency', 'Plumber', 'Electrician', 'Roofer', 'Builder', 'Gardener', 'Painter / Decorator', 'Landscaper', 'Carpenter', 'Driveways / Patios / Paths'].map(soon).join('');
+      html += (SITE.soon || []).filter(t => !JOBS.some(j => j.trade === t)).map(soon).join('');
     } else if (!jobs.length) {
       html = state.q
-        ? `<div class="empty"><b class="disp" style="font-size:22px">No jobs match "${esc(state.q)}" yet</b><p class="small">We're adding trades every week.</p><button class="btn btn-red" type="button" data-waitlist="customer">Get on the quotes waiting list</button></div>`
+        ? `<div class="empty"><b class="disp" style="font-size:22px">No jobs match "${esc(state.q)}" yet</b><p class="small">${esc(C.emptySub)}</p><button class="btn btn-red" type="button" data-waitlist="customer">${esc(C.emptyBtn)}</button></div>`
         : soon(state.trade);
     }
     grid.innerHTML = html;
     grid.classList.toggle('list', state.view === 'list');
     document.querySelectorAll('#chips .chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.trade === state.trade));
     document.querySelectorAll('.toggle button').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
-    const h = $('#feedTitle'); if (h) h.textContent = state.q ? `Results for "${state.q}"` : state.trade === 'All' ? 'Latest jobs' : state.trade;
+    const h = $('#feedTitle'); if (h) h.textContent = state.q ? `Results for "${state.q}"` : state.trade === 'All' ? (SITE.feedTitle || 'Latest jobs') : state.trade;
   }
   const chips = $('#chips');
   if (chips) {
     chips.innerHTML = ['All', ...TRADES].map(t => `<button class="chip" type="button" data-trade="${esc(t)}" aria-pressed="false">${svg(ICON[t], 17)}${esc(t)}</button>`).join('');
     chips.addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; state.trade = c.dataset.trade; state.q = ''; if (sf) sf.q.value = ''; render();
-      try { history.replaceState(null, '', state.trade === 'All' ? '/' : '/trades/' + slugify(state.trade)); } catch (x) {} });
+      try { history.replaceState(null, '', state.trade === 'All' ? '/' : '/' + CAT + '/' + slugify(state.trade)); } catch (x) {} });
     document.querySelectorAll('.toggle button').forEach(b => b.addEventListener('click', () => {
       state.view = b.dataset.view; try { localStorage.setItem('stj-view', state.view); } catch (e) {} render();
     }));
@@ -317,12 +314,12 @@
   if (jobEl) {
     const slug = (location.pathname.match(/^\/job\/([a-z0-9-]+)/) || [])[1] || new URLSearchParams(location.search).get('j');
     const j = JOBS.find(x => x.slug === slug) || JOBS[0];
-    document.title = `${j.title} by ${j.biz} · SnapTheJob`;
+    document.title = `${j.title} by ${j.biz} · ${NAME}`;
     const tagClass = { BEFORE: 'b', DURING: 'd', AFTER: 'a' };
     jobEl.innerHTML = `
       <div class="player"><video src="${j.video}" poster="${j.cover}" controls playsinline preload="metadata" aria-label="${esc(j.alt)}"></video></div>
       <div class="info">
-        <div class="crumb"><a href="/">Jobs</a> › <a href="/trades/${slugify(j.trade)}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
+        <div class="crumb"><a href="/">${esc(C.crumbRoot)}</a> › <a href="/${CAT}/${slugify(j.trade)}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
         <h1 class="disp">${esc(j.title)}</h1>
         <div class="tags">${j.stages.map(s => `<span class="tag ${tagClass[s]}">${s}</span>`).join('')}
           <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''} · Demo</span></div>
@@ -334,10 +331,10 @@
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
         <button class="btn bigshare disp" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
-        <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. SnapTheJob hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
+        <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. ${esc(NAME)} hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
       </div>`;
     const more = $('#more');
-    if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + ['Roofer', 'Bathrooms', 'Builder'].map(soon).join('');
+    if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + (SITE.moreSoon || []).map(soon).join('');
   }
 
   // ---------- full-screen player, laid out like Shorts ----------
@@ -349,10 +346,10 @@
   </div>
   <nav class="vw-side" aria-label="Browse">
     <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
-    <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}Get 3 quotes</button>
-    <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}I'm a trade</button>
-    <div class="vw-side-h">Trades</div>
-    ${TRADES.map(t => `<a href="/trades/${slugify(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
+    <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}${esc(C.sideQuote)}</button>
+    <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}${esc(C.sideTrade)}</button>
+    <div class="vw-side-h">${esc(C.sideHead)}</div>
+    ${TRADES.map(t => `<a href="/${CAT}/${slugify(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
   </nav>
   <div class="vw-main">
     <div class="vw-stage" id="vwStage">
@@ -463,7 +460,7 @@
       b.setAttribute('aria-pressed', on);
       b.classList.toggle('on', on);
       const lbl = b.querySelector('.fl') || b;
-      lbl.textContent = on ? 'Following' : (b.dataset.follow === 'snapthejob' ? 'Follow SnapTheJob' : 'Follow');
+      lbl.textContent = on ? 'Following' : (b.dataset.follow === SITE.id ? 'Follow ' + NAME : 'Follow');
     });
   }
   const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -494,7 +491,7 @@
       <label class="consent"><input type="checkbox" name="consent"><span id="feConsent"></span></label>
       <div class="err" id="feErr" role="alert"></div>
       <button class="send disp" type="submit">Follow by email</button>
-      <p class="small" style="margin:0;text-align:center">On an iPhone? Add SnapTheJob to your home screen to get phone alerts instead. <a href="/privacy">Privacy</a></p>
+      <p class="small" style="margin:0;text-align:center">On an iPhone? Add ${esc(NAME)} to your home screen to get phone alerts instead. <a href="/privacy">Privacy</a></p>
     </form>
   </div>
 </div>`);
@@ -503,7 +500,7 @@
   function openEmailFollow(target, name) {
     feTarget = target; feName = name; feForm.reset(); $('#feErr').textContent = '';
     $('#feTitle').textContent = 'Follow ' + name;
-    $('#feIntro').textContent = target === 'snapthejob' ? 'Get an email round-up of new before and after jobs.' : `Get an email when ${name} posts a new job.`;
+    $('#feIntro').textContent = target === SITE.id ? 'Get an email round-up of new before and after jobs.' : `Get an email when ${name} posts a new job.`;
     $('#feConsent').textContent = `Email me about new jobs from ${name}. I can unsubscribe at any time.`;
     fe.hidden = false; setTimeout(() => feForm.email.focus(), 30);
   }
@@ -524,7 +521,7 @@
     const b = e.target.closest('[data-follow]');
     if (!b || !b.dataset.follow) return;
     e.preventDefault();
-    const target = b.dataset.follow, name = b.dataset.followName || 'SnapTheJob', f = getF();
+    const target = b.dataset.follow, name = b.dataset.followName || NAME, f = getF();
     if (f[target]) {
       if (f[target].via === 'push' && f[target].endpoint) fetch('/api/unfollow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target, endpoint: f[target].endpoint }) }).catch(() => {});
       const was = f[target].via; delete f[target]; setF(f); paintFollows();

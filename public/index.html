@@ -3,41 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SnapTheJob · Before, After, Share.</title>
-<meta name="description" content="Before and after videos of real jobs by UK trades. Watch the work, then get a quote.">
-<meta name="theme-color" content="#D9381E">
-<meta property="og:title" content="SnapTheJob · Before, After, Share.">
-<meta property="og:description" content="Before and after videos of real jobs by UK trades. Watch the work, then get a quote.">
-<meta property="og:image" content="/media/ps-plastering.jpg">
+<title>{{NAME}} · Before, After, Share.</title>
+<meta name="description" content="{{DESC}}">
+<meta name="theme-color" content="{{THEME}}">
+<meta property="og:title" content="{{NAME}} · Before, After, Share.">
+<meta property="og:description" content="{{DESC}}">
+<meta property="og:image" content="{{OG_IMAGE}}">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="{{FONTS}}" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css?v=11">
+{{HEAD}}
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="logo" href="/" aria-label="SnapTheJob home">
+<a class="logo" href="/" aria-label="{{NAME}} home">
 <span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
-<span class="word"><b class="disp">Snap<span class="red">The</span>Job</b><small class="disp"><span class="red">Before,</span> After, <span class="red">Share.</span></small></span>
+{{LOGO_WORD}}
 </a>
 <form class="search" id="searchForm" action="/" role="search">
-<label class="sr" for="q">Search jobs and trades</label>
-<input id="q" name="q" type="search" placeholder="Search: plasterer, clearance, roof…">
+<label class="sr" for="q">{{SEARCH_LABEL}}</label>
+<input id="q" name="q" type="search" placeholder="{{SEARCH_PH}}">
 <button type="submit" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
 </form>
-<div class="actions">
-<button class="btn btn-red" type="button" data-waitlist="trade">I'm a trade</button>
-<button class="btn hide-s" type="button" data-waitlist="customer">Get 3 quotes</button>
-</div>
+{{HEADER_ACTIONS}}
 </div></header>
 <main class="wrap">
-<nav class="chips" id="chips" aria-label="Popular trades"></nav>
-<div class="viewbar"><h2 class="disp" id="feedTitle">Latest jobs</h2>
+<nav class="chips" id="chips" aria-label="{{CHIPS_LABEL}}"></nav>
+<div class="viewbar"><h2 class="disp" id="feedTitle">{{FEED_TITLE}}</h2>
 <div style="display:flex;gap:8px;align-items:center">
-<button class="follow follow-site" type="button" data-follow="snapthejob" data-follow-name="SnapTheJob" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 004 0"/></svg><span class="fl">Follow SnapTheJob</span></button>
+<button class="follow follow-site" type="button" data-follow="{{ID}}" data-follow-name="{{NAME}}" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 004 0"/></svg><span class="fl">Follow {{NAME}}</span></button>
 <div class="toggle" role="group" aria-label="Layout">
 <button type="button" data-view="grid" aria-label="Two per row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg></button>
 <button type="button" data-view="list" aria-label="One per row, full size"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 3h14v18H5z"/></svg></button>
@@ -45,16 +43,13 @@
 <section class="grid" id="grid" aria-live="polite"></section>
 </main>
 <footer class="foot"><div class="wrap">
-<p style="margin:0 0 6px">Videos are posted by the businesses themselves. SnapTheJob hosts them but does not check, vouch for or endorse any work shown.</p>
+{{DISCLAIMER}}
 <!--TRADE_LINKS-->
-<p style="margin:0"><a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · © 2026 SnapTheJob</p>
+<p style="margin:0"><a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · © 2026 {{NAME}}</p>
 </div></footer>
-<nav class="tabbar" aria-label="Main">
-<a href="/"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/></svg>Home</a>
-<button type="button" class="snap" data-waitlist="trade" aria-label="I'm a trade: snap a job"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
-<button type="button" data-waitlist="customer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg>Quotes</button>
-</nav>
+{{TABBAR}}
 <script src="/assets/jobs.js?v=11"></script>
 <script src="/assets/site.js?v=11"></script>
+{{BODY_END}}
 </body>
 </html>

@@ -10,7 +10,7 @@ const MEDIA_DIR = process.env.MEDIA_DIR || '/data/media';
 const JOB_DIR = path.join(MEDIA_DIR, 'jobs');
 const TMP_DIR = path.join(MEDIA_DIR, 'tmp');
 
-module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, onChange }) {
+module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN = {}, onChange }) {
   for (const d of [JOB_DIR, TMP_DIR]) { try { fs.mkdirSync(d, { recursive: true }); } catch (e) {} }
   app.use('/uploads', require('express').static(MEDIA_DIR, { maxAge: '7d', index: false, dotfiles: 'deny' }));
 
@@ -45,7 +45,7 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
     )`);
     const { rows } = await pool.query('SELECT count(*)::int n FROM jobs');
     if (rows[0].n === 0) {
-      const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/jobs.json'), 'utf8'));
+      const seed = JSON.parse(fs.readFileSync(path.join(__dirname, SKIN.seed || 'data/jobs.json'), 'utf8'));
       let i = seed.length;
       for (const j of seed) {
         await pool.query(`INSERT INTO jobs (slug,title,biz,initials,trade,description,services,stages,voice,video,play_video,cover,play_cover,dur,demo,sort,job_date)
@@ -118,7 +118,7 @@ fieldset{border:1px solid #eee;border-radius:12px;padding:10px 12px;display:grid
 .picker{display:grid;gap:8px}.picker video{max-width:240px;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px}
 .picker canvas{max-width:120px;border-radius:8px;border:2px solid #D9381E}
 </style></head><body>
-<nav class="top"><a href="/admin">Overview</a><a href="/admin/jobs" class="on">Jobs</a><a href="/" target="_blank" rel="noopener">View site</a></nav>
+<nav class="top"><a href="/admin">Overview</a><a href="/admin/jobs" class="on">Jobs</a>${SKIN.quote ? '<a href="/admin/quotes">Quotes</a>' : ''}<a href="/" target="_blank" rel="noopener">View site</a></nav>
 ${flash ? `<p class="flash">${esc(flash)}</p>` : ''}${body}</body></html>`;
 
   // Thumbnail chooser (shared by add and edit)
@@ -160,7 +160,7 @@ ${flash ? `<p class="flash">${esc(flash)}</p>` : ''}${body}</body></html>`;
 
   const jobFields = (j = {}) => `<div class="row">
 <label>Title<input name="title" maxlength="80" required value="${esc(j.title || '')}" placeholder="Full room re-plaster"></label>
-<label>Trade<select name="trade" required>${tradeOptions(j.trade)}</select></label></div>
+<label>${SKIN.catPath === "trades" || !SKIN.catPath ? "Trade" : "Waste type"}<select name="trade" required>${tradeOptions(j.trade)}</select></label></div>
 <div class="row">
 <label>Business name<input name="biz" maxlength="80" required value="${esc(j.biz || '')}" placeholder="PS Plastering"></label>
 <label>Services (separate with commas)<input name="services" maxlength="600" value="${esc((j.services || []).join(', '))}" placeholder="Re-plastering, Skimming, Ceilings"></label></div>

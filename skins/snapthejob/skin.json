@@ -1,0 +1,115 @@
+{
+ "id": "snapthejob",
+ "name": "SnapTheJob",
+ "origin": "https://snapthejob.co.uk",
+ "theme": "#D9381E",
+ "fonts": "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Work+Sans:wght@400;600;700&display=swap",
+ "logoWord": "<span class=\"word\"><b class=\"disp\">Snap<span class=\"red\">The</span>Job</b><small class=\"disp\"><span class=\"red\">Before,</span> After, <span class=\"red\">Share.</span></small></span>",
+ "desc": "Before and after videos of real jobs by UK trades. Watch the work, then get a quote.",
+ "homeTitle": "SnapTheJob · Before and after videos from UK trades",
+ "homeDesc": "Watch real before and after videos of jobs by local plumbers, builders, plasterers, roofers, waste removal and more. Then get a quote.",
+ "ogImage": "/media/ps-plastering.jpg",
+ "searchPlaceholder": "Search: plasterer, clearance, roof…",
+ "searchLabel": "Search jobs and trades",
+ "chipsLabel": "Popular trades",
+ "feedTitle": "Latest jobs",
+ "disclaimer": "<p style=\"margin:0 0 6px\">Videos are posted by the businesses themselves. SnapTheJob hosts them but does not check, vouch for or endorse any work shown.</p>",
+ "headerActions": "<div class=\"actions\">\n<button class=\"btn btn-red\" type=\"button\" data-waitlist=\"trade\">I'm a trade</button>\n<button class=\"btn hide-s\" type=\"button\" data-waitlist=\"customer\">Get 3 quotes</button>\n</div>",
+ "tabbar": "<nav class=\"tabbar\" aria-label=\"Main\">\n<a href=\"/\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11l9-7 9 7v9H3z\"/></svg>Home</a>\n<button type=\"button\" class=\"snap\" data-waitlist=\"trade\" aria-label=\"I'm a trade: snap a job\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 8h3l2-3h6l2 3h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/></svg></button>\n<button type=\"button\" data-waitlist=\"customer\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h16v11H8l-4 4z\"/></svg>Quotes</button>\n</nav>",
+ "catPath": "trades",
+ "catPageTitle": "{cat} before and after videos · SnapTheJob",
+ "catPageDesc": "Watch before and after videos of real {cat_lc} jobs by local trades, then get a quote.",
+ "catPageDescEmpty": "Before and after videos of {cat_lc} jobs are coming soon to SnapTheJob. Trades: be the first to post yours.",
+ "browseLabel": "Browse trades:",
+ "browseAria": "All trades",
+ "categories": [
+  {
+   "name": "Emergency",
+   "icon": "M12 3l10 18H2zM12 10v5M12 18h.01"
+  },
+  {
+   "name": "Plumber",
+   "icon": "M3 9h9a4 4 0 014 4v2M8 9V5M5 5h6M16 19v2"
+  },
+  {
+   "name": "Electrician",
+   "icon": "M13 2L4 14h7l-1 8 9-12h-7z"
+  },
+  {
+   "name": "Roofer",
+   "icon": "M2 13l10-8 10 8M5 11v9h14v-9"
+  },
+  {
+   "name": "Builder",
+   "icon": "M3 6h18v12H3zM3 12h18M9 6v6M15 12v6"
+  },
+  {
+   "name": "Gardener",
+   "icon": "M12 21v-8M12 13c0-4-3-6-7-6 0 4 3 6 7 6zM12 11c0-3 2-5 6-5 0 3-2 5-6 5zM7 21h10"
+  },
+  {
+   "name": "Painter / Decorator",
+   "icon": "M5 4h12v5H5zM17 6h2v6h-7v3M11 15h2v6h-2z"
+  },
+  {
+   "name": "Landscaper",
+   "icon": "M12 22v-6M12 16a6 6 0 006-6c0-4-3-7-6-8-3 1-6 4-6 8a6 6 0 006 6z"
+  },
+  {
+   "name": "Waste Management",
+   "icon": "M3 7h11v9H3zM14 10h4l3 3v3h-7M7 21a2 2 0 100-4 2 2 0 000 4zM17 21a2 2 0 100-4 2 2 0 000 4z"
+  },
+  {
+   "name": "Carpenter",
+   "icon": "M14 6l4 4M3 21l9-9M11 5l4-2 6 6-2 4z"
+  },
+  {
+   "name": "Plasterer",
+   "icon": "M3 14h13l5-5H8zM12 14v3M10 17h4v4h-4z"
+  },
+  {
+   "name": "Driveways / Patios / Paths",
+   "icon": "M8 3L4 21M16 3l4 18M12 5v3M12 11v3M12 17v3"
+  },
+  {
+   "name": "Fencing / Gates",
+   "icon": "M5 21V6l2-3 2 3v15M15 21V6l2-3 2 3v15M3 10h18M3 16h18"
+  },
+  {
+   "name": "Tree Surgeon",
+   "icon": "M12 22V13M6 13h12L12 3z"
+  },
+  {
+   "name": "Bathrooms",
+   "icon": "M3 12h18v3a5 5 0 01-5 5H8a5 5 0 01-5-5zM6 12V6a2 2 0 014 0M7 20l-1 2M17 20l1 2"
+  },
+  {
+   "name": "Tiler - Tiling",
+   "icon": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"
+  },
+  {
+   "name": "Central Heating",
+   "icon": "M5 5v14M9 5v14M13 5v14M17 5v14M3 19h18"
+  }
+ ],
+ "allIcon": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+ "soon": [
+  "Emergency",
+  "Plumber",
+  "Electrician",
+  "Roofer",
+  "Builder",
+  "Gardener",
+  "Painter / Decorator",
+  "Landscaper",
+  "Carpenter",
+  "Driveways / Patios / Paths"
+ ],
+ "moreSoon": [
+  "Roofer",
+  "Bathrooms",
+  "Builder"
+ ],
+ "seed": "data/jobs.json",
+ "copy": {}
+}
