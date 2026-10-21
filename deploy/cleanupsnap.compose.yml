@@ -1,7 +1,8 @@
 # CleanUpSnap site (SKIN=cleanupsnap) + its own PostgreSQL database (as deployed on the Hostinger VPS, Docker manager project "cleanupsnap").
 # Project environment (set on the server only, never in this repo):
 #   DB_PASSWORD, ADMIN_PASSWORD, VAPID_PUBLIC, VAPID_PRIVATE,
-#   PREVIEW_KEY (while in private preview; remove to go public),
+#   NOINDEX=1 and SOON_HOSTS (while in development: e.g. SITE_HOSTS=dev.cleanupsnap.co.uk, cleanupsnap.co.uk and SOON_HOSTS=cleanupsnap.co.uk),
+#   PREVIEW_KEY (optional link-only lock),
 #   SITE_HOSTS=cleanupsnap.co.uk, REDIRECT_HOSTS=www.cleanupsnap.co.uk, cleanupsnap.com, www.cleanupsnap.com
 # Updating the site: push to main, then restart the project (the web container clones main on start).
 services:
@@ -12,6 +13,8 @@ services:
       - NODE_ENV=production
       - SKIN=cleanupsnap
       - PREVIEW_KEY=${PREVIEW_KEY}
+      - NOINDEX=${NOINDEX}
+      - SOON_HOSTS=${SOON_HOSTS}
       - DATABASE_URL=postgres://cus:${DB_PASSWORD}@db:5432/cus
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}

@@ -33,6 +33,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// ---------- dev mode: NOINDEX=1 tells search engines to stay away; SOON_HOSTS show a "Coming soon" page instead of the site ----------
+const NOINDEX = process.env.NOINDEX === '1';
+const SOON_HOSTS = (process.env.SOON_HOSTS || '').split(',').map(h => h.trim().toLowerCase()).filter(Boolean);
+app.use((req, res, next) => {
+  if (NOINDEX) res.set('X-Robots-Tag', 'noindex, nofollow');
+  if (!SOON_HOSTS.includes((req.hostname || '').toLowerCase()) || req.path === '/health') return next();
+  const t = SKIN.theme || '#111214';
+  res.set({ 'Cache-Control': 'public, max-age=300', 'X-Robots-Tag': 'noindex' }).send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SKIN.name)} · Coming soon</title><link rel="icon" href="/assets/icon.svg" type="image/svg+xml"><link href="${SKIN.fonts}" rel="stylesheet"></head>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#fff;color:#111214;font-family:'Work Sans',system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box">
+<div><div style="display:inline-flex;align-items:center;gap:12px"><span style="width:56px;height:56px;border-radius:14px;background:${t};display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+<span style="font-family:'Poppins','Work Sans',sans-serif;font-weight:800;font-size:34px;--red:${t}">${SKIN.logoWord.replace(/class="red"/g, `style="color:${t}"`)}</span></div>
+<p style="font-size:20px;margin:22px 0 0">Coming soon.</p></div></body></html>`);
+});
+
 // ---------- private preview: set PREVIEW_KEY and only people with the link ?preview=<key> can see the site ----------
 const PREVIEW_KEY = process.env.PREVIEW_KEY || '';
 if (PREVIEW_KEY) app.use((req, res, next) => {
@@ -510,7 +524,7 @@ app.get('/job/:slug', (req, res, next) => {
     })
   }));
 });
-app.get('/robots.txt', (req, res) => res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
+app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
   const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/contact', '/privacy'];
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
