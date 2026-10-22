@@ -44,7 +44,7 @@ app.use((req, res, next) => {
   res.set({ 'Cache-Control': 'public, max-age=300', 'X-Robots-Tag': 'noindex' }).send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SKIN.name)} · Coming soon</title><link rel="icon" href="/assets/icon.svg" type="image/svg+xml"><link href="${SKIN.fonts}" rel="stylesheet"></head>
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#fff;color:#111214;font-family:'Work Sans',system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box">
 <div><div style="display:inline-flex;align-items:center;gap:12px"><span style="width:56px;height:56px;border-radius:14px;background:${t};display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
-<span style="font-family:'Poppins','Work Sans',sans-serif;font-weight:800;font-size:34px;--red:${t}">${SKIN.logoWord.replace(/class="red"/g, `style="color:${t}"`)}</span></div>
+<span style="font-family:'Poppins','Work Sans',sans-serif;font-weight:800;font-size:34px;--red:${t}">${SKIN.logoWord.replace(/class="red"/g, `style="color:${t}"`).replace(/<small class="strap">/, `<small style="display:block;text-align:left;font-family:'Work Sans',sans-serif;font-weight:400;font-size:15px;color:#111214;margin-top:6px">`)}</span></div>
 <p style="font-size:20px;margin:22px 0 0">Coming soon.</p></div></body></html>`);
 });
 

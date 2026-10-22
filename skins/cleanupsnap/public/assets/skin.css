@@ -51,3 +51,7 @@
 .sum dd{font-weight:600}
 .sum .phs{padding:10px;grid-template-columns:repeat(6,1fr);gap:6px}
 .sum .phs figure{border-radius:8px}
+
+/* strapline under the logo: small, not bold, green / black / green */
+.word small.strap{font-family:'Work Sans',system-ui,sans-serif;font-weight:400;font-size:13px;letter-spacing:.01em;color:var(--ink);margin-top:4px}
+.word small.strap .red{color:var(--red)}
