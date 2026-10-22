@@ -15,11 +15,12 @@ const WORK_DIR = path.join(MEDIA_DIR, 'render');
 const ENGINE = path.join(__dirname, 'video', 'engine.py');
 const PYTHON = process.env.PYTHON || 'python3';
 const DAY = 864e5;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
-const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || '';
+// AI keys: from the server settings, or pasted by the owner at /admin/ai (kept in the private database, never shown again)
+let ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
+let ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || '';
 const SCRIPT_MODEL = process.env.SCRIPT_MODEL || 'claude-haiku-5-5';
 
-module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs, sendPush, page, tpl }) {
+module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs, sendPush, page, tpl, auth }) {
   for (const d of [JOB_DIR, WORK_DIR]) { try { fs.mkdirSync(d, { recursive: true }); } catch (e) {} }
   const C = Object.assign({ iAm: "I'm a trade", noun: 'trade', nounCap: 'Trade', catLabel: 'Trade', jobWord: 'job' }, SKIN.tradeCopy || {});
   const clean = (v, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -92,8 +93,30 @@ ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value
 </form>`);
 
   const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Ready: check it, then approve</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
-  const AI_TTS = !!ELEVEN_KEY, AI_SCRIPT = !!ANTHROPIC_KEY;
-  const VOICES = (SKIN.voices && SKIN.voices.length) ? SKIN.voices : [{ id: '1YfmfuouRyRwVbpAZP7R', name: 'Serena (UK, female)' }, { id: 'T9bEpk4Va2Kpk1mZWay7', name: 'Darren (UK, male)' }];
+  const ALL_VOICES = (SKIN.voices && SKIN.voices.length) ? SKIN.voices : [{ id: '1YfmfuouRyRwVbpAZP7R', name: 'Serena (UK, female)' }, { id: 'T9bEpk4Va2Kpk1mZWay7', name: 'Darren (UK, male)' }];
+  let HAVE = null; // voice ids in the ElevenLabs account (null = not checked)
+  const voices = () => HAVE ? ALL_VOICES.filter(v => HAVE.has(v.id)) : ALL_VOICES;
+  async function loadKeys() {
+    const r = (await pool.query("SELECT key, value FROM settings WHERE key IN ('eleven_key','anthropic_key')")).rows;
+    for (const x of r) { if (x.key === 'eleven_key' && x.value) ELEVEN_KEY = x.value; if (x.key === 'anthropic_key' && x.value) ANTHROPIC_KEY = x.value; }
+    await checkVoices();
+  }
+  async function checkVoices() {
+    if (!ELEVEN_KEY) { HAVE = null; return { ok: false, msg: 'No ElevenLabs key yet.' }; }
+    try {
+      const ids = new Set(); let token = '';
+      for (let i = 0; i < 10; i++) {
+        const r = await fetch('https://api.elevenlabs.io/v2/voices?page_size=100' + (token ? '&next_page_token=' + encodeURIComponent(token) : ''), { headers: { 'xi-api-key': ELEVEN_KEY } });
+        if (!r.ok) return { ok: false, msg: `ElevenLabs said no (${r.status}). Check the key and that it has "Voices: read" switched on.` };
+        const j = await r.json();
+        (j.voices || []).forEach(v => ids.add(v.voice_id));
+        if (!j.has_more || !j.next_page_token) break; token = j.next_page_token;
+      }
+      HAVE = ids;
+      return { ok: true };
+    } catch (e) { return { ok: false, msg: 'Could not reach ElevenLabs: ' + e.message }; }
+  }
+  const AI = { get tts() { return !!ELEVEN_KEY; }, get script() { return !!ANTHROPIC_KEY; } };
   const jobsPage = (biz, jobs, msg = '', bad = '') => wrap('My ' + C.jobWord + 's', `${jobs.some(r => r.status === 'processing') ? '<meta http-equiv="refresh" content="8">' : ''}
 <div class="trade-head"><div><h1 class="disp" style="font-size:28px;margin:0">${esc(biz.name)}</h1><p class="small" style="margin:2px 0 0">${esc(biz.trade || '')}${biz.town ? ' · ' + esc(biz.town) : ''}</p></div>
 <form method="post" action="/trade/logout" style="margin:0"><button class="btn" type="submit" style="min-height:40px">Sign out</button></form></div>
@@ -115,8 +138,8 @@ ${err(bad)}
 <div class="vmodes" role="radiogroup">
 <label><input type="radio" name="voice_mode" value="none" checked> No voice</label>
 <label><input type="radio" name="voice_mode" value="mic"> Record my voice</label>
-${AI_TTS ? `<label><input type="radio" name="voice_mode" value="script"> Type a script</label>` : ''}
-${AI_TTS && AI_SCRIPT ? `<label><input type="radio" name="voice_mode" value="ai"> AI writes it from my photos</label>` : ''}
+${AI.tts ? `<label><input type="radio" name="voice_mode" value="script"> Type a script</label>` : ''}
+${AI.tts && AI.script ? `<label><input type="radio" name="voice_mode" value="ai"> AI writes it from my photos</label>` : ''}
 </div>
 <div data-vm="mic" hidden>
 <div class="vrow">
@@ -131,10 +154,10 @@ ${AI_TTS && AI_SCRIPT ? `<label><input type="radio" name="voice_mode" value="ai"
 <button type="button" class="btn btn-red" id="aiWrite" data-vm="ai" hidden style="margin-bottom:8px">Write it from my photos</button>
 <span class="small" id="aiState" data-vm="ai" hidden></span>
 <label class="f">Script (what the voice will say; keep it short)<textarea name="script" id="scriptBox" maxlength="400" rows="4" placeholder="Before: a driveway full of an old sofa, carpet and bags. After: all cleared and swept, same day."></textarea></label>
-<label class="f" style="margin-top:8px">Voice<select name="voice_id">${VOICES.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('')}</select></label>
+<label class="f" style="margin-top:8px">Voice<select name="voice_id">${voices().map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('')}</select></label>
 <p class="small" style="margin:6px 0 0">An AI voice reads your script. It says it's an AI voice on the video.</p>
 </div>
-${AI_TTS ? '' : '<p class="small" style="margin:8px 0 0">AI voice: coming soon.</p>'}
+${AI.tts ? '' : '<p class="small" style="margin:8px 0 0">AI voice: coming soon.</p>'}
 </fieldset>
 ${field('What was the ' + esc(C.jobWord) + '? (shown as the title)', `<input name="title" required maxlength="80" placeholder="${esc(C.titleHint || 'Garden cleared: old shed and green waste')}">`)}
 ${field(C.catLabel, `<select name="trade" required>${TRADES.map(t => `<option${t === biz.trade ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`)}
@@ -245,7 +268,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       const before = (req.files.before || [])[0], after = (req.files.after || [])[0], during = (req.files.during || []).slice(0, 3);
       const voice = mode === 'mic' ? (req.files.voice || [])[0] : null; if (mode !== 'mic' && (req.files.voice || [])[0]) fs.unlink(req.files.voice[0].path, () => {});
       const script = (mode === 'script' || mode === 'ai') && ELEVEN_KEY ? clean(b.script, 400) : '';
-      const voiceId = VOICES.some(v => v.id === b.voice_id) ? b.voice_id : VOICES[0].id;
+      const voiceId = voices().some(v => v.id === b.voice_id) ? b.voice_id : (voices()[0] || ALL_VOICES[0]).id;
       const title = clean(b.title, 80), trade = TRADES.includes(b.trade) ? b.trade : biz.trade;
       if (!before || !after || !title || !b.confirm || !trade) { bin(); return res.redirect(303, '/trade/jobs?m=bad'); }
       let slug = slugify(title) || 'job', i = 2; const base = slug;
@@ -360,6 +383,38 @@ Reply with the script only, no quotes or headings.` });
     }
   }
 
+  // ---------- owner: paste AI keys (stored in the private database; only the last 4 characters are ever shown) ----------
+  const tail = k => k ? '…' + k.slice(-4) : 'not set';
+  const aiPage = (msg = '', bad = '') => `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>AI keys · ${esc(SKIN.name)} admin</title>
+<style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;max-width:760px}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}nav a{padding:8px 14px;border-radius:18px;border:1px solid #ccc;text-decoration:none;color:#1F2124;font-weight:600}nav a.on{background:#1F2124;color:#fff}
+form{border:1px solid #ddd;border-radius:14px;padding:14px;display:grid;gap:12px}label{display:grid;gap:4px;font-weight:600}input{font:inherit;padding:12px;border:1px solid #bbb;border-radius:10px}
+button{background:${esc(SKIN.theme)};color:#fff;border:none;border-radius:22px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}.ok{background:#EEF8F0;border:1px solid ${esc(SKIN.theme)};padding:10px 14px;border-radius:12px;font-weight:600}.bad{background:#FDE8E4;border:1px solid #A1260F;padding:10px 14px;border-radius:12px;font-weight:600}
+.n{color:#5E6168;font-size:14px}table{border-collapse:collapse;width:100%}td{padding:6px 8px;border-top:1px solid #eee}</style></head><body>
+<nav><a href="/admin">Overview</a><a href="/admin/jobs">Jobs</a>${SKIN.quote ? '<a href="/admin/quotes">Quotes</a>' : ''}<a href="/admin/ai" class="on">AI voice</a></nav>
+<h1>AI voice and scripts</h1>
+${msg ? `<p class="ok">${esc(msg)}</p>` : ''}${bad ? `<p class="bad">${esc(bad)}</p>` : ''}
+<form method="post" action="/admin/ai" autocomplete="off">
+<label>ElevenLabs API key (the voice) <span class="n">Now: ${esc(tail(ELEVEN_KEY))}</span><input name="eleven" type="password" placeholder="Paste the key here" autocomplete="off" spellcheck="false"></label>
+<label>Anthropic API key (AI writes the script from photos; optional) <span class="n">Now: ${esc(tail(ANTHROPIC_KEY))}</span><input name="anthropic" type="password" placeholder="Paste the key here" autocomplete="off" spellcheck="false"></label>
+<button type="submit">Save</button>
+<span class="n">Keys are kept in this site's private database and are never shown again (only the last 4 characters). Leave a box empty to keep the current key.</span>
+</form>
+<h2>Voices on the Post a job form</h2>
+<table>${ALL_VOICES.map(v => `<tr><td>${esc(v.name)}</td><td>${HAVE ? (HAVE.has(v.id) ? '✅ ready' : '⚠️ not in your ElevenLabs My Voices') : '–'}</td></tr>`).join('')}</table>
+<p class="n">Only voices marked ready are offered to carriers.</p>
+</body></html>`;
+  if (auth) {
+    app.get('/admin/ai', auth, (req, res) => res.set('Cache-Control', 'no-store').send(aiPage({ saved: 'Saved.' }[req.query.m] || '')));
+    app.post('/admin/ai', auth, sameOrigin, require('express').urlencoded({ extended: false, limit: '4kb' }), async (req, res, next) => { try {
+      const b = req.body || {};
+      const e = clean(b.eleven, 200).replace(/\s+/g, ''), a = clean(b.anthropic, 300).replace(/\s+/g, '');
+      if (e) { await pool.query("INSERT INTO settings (key,value) VALUES ('eleven_key',$1) ON CONFLICT (key) DO UPDATE SET value=$1", [e]); ELEVEN_KEY = e; }
+      if (a) { await pool.query("INSERT INTO settings (key,value) VALUES ('anthropic_key',$1) ON CONFLICT (key) DO UPDATE SET value=$1", [a]); ANTHROPIC_KEY = a; }
+      const c = await checkVoices();
+      res.set('Cache-Control', 'no-store').send(aiPage(c.ok ? 'Saved. The AI voice options are now on the Post a job form.' : (e || a ? 'Saved.' : ''), c.ok ? '' : c.msg));
+    } catch (err) { next(err); } });
+  }
+
   // used by /admin: approve a carrier's job (goes live, followers get the alert)
   async function approve(id) {
     const r = (await pool.query(`UPDATE jobs SET approved=true, hidden=false WHERE id=$1 RETURNING *`, [id])).rows[0];
@@ -372,5 +427,5 @@ Reply with the script only, no quotes or headings.` });
     return r;
   }
 
-  return { init, approve, current };
+  return { init: async () => { await init(); await loadKeys().catch(e => console.error('AI keys', e.message)); }, approve, current };
 };

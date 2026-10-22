@@ -184,5 +184,79 @@
   "catLabel": "Type of waste",
   "jobWord": "job",
   "titleHint": "Drive cleared: sofa, carpet and bags"
- }
+ },
+ "voices": [
+  {
+   "id": "2zGNoZ0Uf48gkgwxvtwP",
+   "name": "Yorkshire (male)"
+  },
+  {
+   "id": "c8MZcZcr0JnMAwkwnTIu",
+   "name": "Manchester (male)"
+  },
+  {
+   "id": "m3ERpbBFjTAqD5PJozID",
+   "name": "Liverpool (male)"
+  },
+  {
+   "id": "jBXMV2OJNGejI4UpxV1d",
+   "name": "London (male)"
+  },
+  {
+   "id": "jHaMBg1Vt4kPQ9Qwbqda",
+   "name": "Essex (male)"
+  },
+  {
+   "id": "7sZVLqr2ZW4afp4vkx7N",
+   "name": "Scotland (male)"
+  },
+  {
+   "id": "BOt7zZh6gzfWlIUYnyPz",
+   "name": "Ireland (male)"
+  },
+  {
+   "id": "wCizWKvnaS3LOIUwHo98",
+   "name": "Neutral British (female)"
+  },
+  {
+   "id": "MDvK7PyhP5PPTV22yvup",
+   "name": "West Midlands (female)"
+  },
+  {
+   "id": "8KgifH3usc0tJtr7QzP4",
+   "name": "Yorkshire 2 (male)"
+  },
+  {
+   "id": "ZPscCHzkUPfwf2Lb8iTN",
+   "name": "London 2 (male)"
+  },
+  {
+   "id": "xQoJctkjLbN6MAa5Ibhk",
+   "name": "British 2 (female)"
+  },
+  {
+   "id": "tkWr6klIDADZ7T8TWUuj",
+   "name": "Northern, Scouse lilt (male)"
+  },
+  {
+   "id": "4T1MNKCpZepmaPkPQpUX",
+   "name": "Essex, young (male)"
+  },
+  {
+   "id": "EGujxig4hSterFerZs3X",
+   "name": "Scotland, upbeat (male)"
+  },
+  {
+   "id": "K6kfGjxPNlaoz8EBsza3",
+   "name": "Scotland, mild (male)"
+  },
+  {
+   "id": "N5OEakgvy8bwbFcXZzJ8",
+   "name": "Ireland 2 (male)"
+  },
+  {
+   "id": "7uDxvtPDB7zMehaRUyXh",
+   "name": "Northern Ireland (male)"
+  }
+ ]
 }
