@@ -107,7 +107,12 @@ ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value
       const ids = new Set(); let token = '';
       for (let i = 0; i < 10; i++) {
         const r = await fetch('https://api.elevenlabs.io/v2/voices?page_size=100' + (token ? '&next_page_token=' + encodeURIComponent(token) : ''), { headers: { 'xi-api-key': ELEVEN_KEY } });
-        if (!r.ok) return { ok: false, msg: `ElevenLabs said no (${r.status}). Check the key and that it has "Voices: read" switched on.` };
+        if (!r.ok) {
+          const t = await r.text().catch(() => ''); let why = '';
+          try { const d = JSON.parse(t).detail || {}; why = [d.status, d.message].filter(Boolean).join(': '); } catch (e) { why = t.slice(0, 200); }
+          console.error('ElevenLabs voices check', r.status, why);
+          return { ok: false, msg: `ElevenLabs said no (${r.status}). Their reason: ${why || 'none given'}.` };
+        }
         const j = await r.json();
         (j.voices || []).forEach(v => ids.add(v.voice_id));
         if (!j.has_more || !j.next_page_token) break; token = j.next_page_token;
@@ -397,6 +402,7 @@ ${msg ? `<p class="ok">${esc(msg)}</p>` : ''}${bad ? `<p class="bad">${esc(bad)}
 <label>ElevenLabs API key (the voice) <span class="n">Now: ${esc(tail(ELEVEN_KEY))}</span><input name="eleven" type="password" placeholder="Paste the key here" autocomplete="off" spellcheck="false"></label>
 <label>Anthropic API key (AI writes the script from photos; optional) <span class="n">Now: ${esc(tail(ANTHROPIC_KEY))}</span><input name="anthropic" type="password" placeholder="Paste the key here" autocomplete="off" spellcheck="false"></label>
 <button type="submit">Save</button>
+<span class="n">To re-check the voices without changing anything, leave both boxes empty and tap Save.</span>
 <span class="n">Keys are kept in this site's private database and are never shown again (only the last 4 characters). Leave a box empty to keep the current key.</span>
 </form>
 <h2>Voices on the Post a job form</h2>
