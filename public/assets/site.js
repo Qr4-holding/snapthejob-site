@@ -561,4 +561,64 @@
     } catch (ex) { err.textContent = ex.message; }
     finally { b.disabled = false; b.textContent = 'Send message'; }
   });
+
+  // ---------- Get the app (install to home screen) ----------
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|TikTok|musical_ly|BytedanceWebview|Snapchat|Pinterest|Twitter|LinkedInApp|Line\//i.test(ua);
+  const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  let installEvt = null;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  if (standalone() && /[?&]src=app/.test(location.search)) track('app_open');
+  const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+  const appPage = document.querySelector('.app-page');
+  const paintApp = () => {
+    if (!appPage) return;
+    const show = os => appPage.querySelectorAll(`[data-os="${os}"]`).forEach(x => { x.hidden = false; });
+    appPage.querySelectorAll('[data-os]').forEach(x => { x.hidden = true; });
+    const other = appPage.querySelector('.app-other');
+    if (standalone()) { show('installed'); if (other) other.hidden = true; return; }
+    if (installEvt) show('prompt');
+    if (inApp) show('inapp');
+    if (isIOS) show('ios');
+    else if (isAndroid) { if (!installEvt) show('android'); }
+    else show('desktop');
+    // "Using a different phone?" shows the steps for the other kind
+    const otherIn = appPage.querySelector('.app-other-in');
+    if (otherIn) otherIn.innerHTML = ['ios', 'android'].filter(os => !(os === 'ios' ? isIOS : isAndroid))
+      .map(os => appPage.querySelector(`[data-os="${os}"]`).innerHTML).join('');
+  };
+  paintApp();
+
+  const appBar = () => {
+    if (appPage || standalone() || !/Mobi|Android|iPhone/i.test(ua) || document.querySelector('.appbar')) return;
+    const off = +store.get('app-bar-off') || 0;
+    if (Date.now() - off < 30 * 864e5) return;
+    const n = (+store.get('app-visits') || 0) + 1; store.set('app-visits', n);
+    if (n < 3 && !installEvt) return;
+    const bar = document.createElement('div');
+    bar.className = 'appbar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Get the app');
+    bar.innerHTML = `<img src="/assets/icon-192.png" width="40" height="40" alt=""><span><b>Get the app</b><small>${esc(SITE.appName || NAME)} · free, no app store</small></span><a class="btn btn-red" href="/app" data-install>${isIOS ? 'How' : 'Install'}</a><button type="button" class="appbar-x" aria-label="Not now">${svg('M6 6l12 12M18 6L6 18', 18)}</button>`;
+    bar.querySelector('.appbar-x').addEventListener('click', () => { store.set('app-bar-off', Date.now()); bar.remove(); });
+    document.body.appendChild(bar);
+  };
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; paintApp(); });
+  window.addEventListener('appinstalled', () => {
+    installEvt = null; track('install');
+    const bar = document.querySelector('.appbar'); if (bar) bar.remove();
+    if (appPage) { appPage.querySelectorAll('[data-os]').forEach(x => { x.hidden = x.dataset.os !== 'installed'; }); }
+    else toast(`${SITE.appName || NAME} is on your home screen.`);
+  });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-install]');
+    if (!b || !installEvt) return; // no install prompt here: the link opens the step-by-step page
+    e.preventDefault();
+    const evt = installEvt; installEvt = null;
+    evt.prompt();
+    try { await evt.userChoice; } catch (x) {}
+    paintApp();
+  });
+  setTimeout(appBar, 1500);
 })();

@@ -1,0 +1,41 @@
+/* EKP11 Snap skin: EKP 11 Waste Management green on white, Inter. Loaded after the shared site.css. */
+:root{--red:#50A212;--red-dk:#2E6804;--ink:#1F2124;--muted:#5C6168;--soft:#F1F8EA;--line:#C8E3AE;--grey:#E6EEDF}
+body,.disp{font-family:'Inter',system-ui,sans-serif}
+.disp{font-weight:800;letter-spacing:-.01em}
+.top{border-bottom:3px solid var(--red-dk)}
+.logo .mark{display:none}
+.ekp-logo{height:44px;width:auto;display:block}
+.btn{border-color:var(--red-dk);color:var(--red-dk)}
+.btn-red,.btn-red:hover{border-color:var(--red);color:#fff}
+.btn-red:hover{background:var(--red-dk);border-color:var(--red-dk)}
+.tabbar{border-top:2px solid var(--red)}
+.bface{width:44px;height:44px;border-radius:50%;background:var(--red-dk);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex:none}
+/* Snap your rubbish */
+.qz{display:flex;flex-direction:column;gap:16px}
+.qz-bar{height:6px;border-radius:3px;background:var(--grey);overflow:hidden}
+.qz-bar i{display:block;height:100%;background:var(--red);transition:width .2s}
+.bubble{background:var(--soft);border-radius:16px 16px 16px 4px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;line-height:1.45}
+.bubble .bface{width:34px;height:34px;font-size:15px}
+.bubble small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.drop{position:relative;border:2px dashed var(--red);border-radius:16px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;color:var(--red-dk);font-weight:700;cursor:pointer;background:#FAFDFA;padding:14px}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop small{font-weight:400;color:var(--muted);font-size:13px}
+.phs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phs figure{margin:0;position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--grey)}
+.phs img{width:100%;height:100%;object-fit:cover;display:block}
+.phs button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(17,18,20,.75);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.qh{font-weight:700;font-size:17px;margin:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{min-height:44px;padding:0 16px;border-radius:22px;border:1px solid #C9CFCA;background:#fff;font-weight:600;font-size:15px;cursor:pointer;color:var(--ink)}
+.opt[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.haz{border:1px solid #F0C9A8;background:#FFF8F1;border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45}
+.qnav{display:flex;gap:10px}
+.qnav .send{flex:1}
+.qnav .btn{min-height:54px}
+.sum{border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sum dl{margin:0;display:grid;grid-template-columns:auto 1fr}
+.sum dt,.sum dd{margin:0;padding:9px 12px;border-top:1px solid #EEF2EE;font-size:15px}
+.sum dt{color:var(--muted);font-weight:600}
+.sum dd{font-weight:600}
+.sum .phs{padding:10px;grid-template-columns:repeat(6,1fr);gap:6px}
+.sum .phs figure{border-radius:8px}

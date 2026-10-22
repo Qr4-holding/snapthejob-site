@@ -1,0 +1,124 @@
+{
+ "id": "ekp11",
+ "name": "EKP11 Snap",
+ "origin": "https://ekp11.cleanupsnap.co.uk",
+ "theme": "#50A212",
+ "fonts": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap",
+ "logoWord": "<img class=\"ekp-logo\" src=\"/assets/logo.png\" alt=\"EKP 11 Waste Management\" height=\"44\"><span class=\"sr\">EKP11 Snap</span>",
+ "desc": "Before and after clear-ups by EKP 11 Waste Management. Snap your rubbish to get a quote.",
+ "homeTitle": "Our work · EKP 11 Waste Management",
+ "homeDesc": "Watch before and after clear-ups by EKP 11 Waste Management, then snap your rubbish to get a quote.",
+ "ogImage": "/media/waste-clearance.jpg",
+ "searchPlaceholder": "Search our clear-ups…",
+ "searchLabel": "Search our clear-ups",
+ "chipsLabel": "Job types",
+ "feedTitle": "Our work",
+ "disclaimer": "",
+ "headerActions": "<div class=\"actions\">\n<button class=\"btn btn-red\" type=\"button\" data-waitlist=\"customer\">Snap your rubbish</button>\n</div>",
+ "tabbar": "<nav class=\"tabbar\" aria-label=\"Main\">\n<a href=\"/\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11l9-7 9 7v9H3z\"/></svg>Our work</a>\n<button type=\"button\" class=\"snap\" data-waitlist=\"customer\" aria-label=\"Snap your rubbish for a quote\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 8h3l2-3h6l2 3h3v11H4z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/></svg></button>\n<a href=\"/app\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 2h10v20H7zM11 18h2\"/></svg>Get the app</a>\n</nav>",
+ "bodyEnd": "<script src=\"/assets/quote.js?v=2\"></script>",
+ "css": "/assets/skin.css?v=1",
+ "catPath": "work",
+ "catPageTitle": "{cat}: before and after · EKP 11 Waste Management",
+ "catPageDesc": "Before and after videos of {cat_lc} jobs by EKP 11 Waste Management. Snap your rubbish for a quote.",
+ "catPageDescEmpty": "Before and after videos of {cat_lc} jobs by EKP 11 Waste Management are coming soon.",
+ "browseLabel": "Browse our work:",
+ "browseAria": "All job types",
+ "categories": [
+  {
+   "name": "House",
+   "icon": "M3 11l9-7 9 7v9H3zM9 20v-6h6v6"
+  },
+  {
+   "name": "Garden",
+   "icon": "M12 21v-8M12 13c0-4-3-6-7-6 0 4 3 6 7 6zM12 11c0-3 2-5 6-5 0 3-2 5-6 5zM7 21h10"
+  },
+  {
+   "name": "Rubbish clearance",
+   "icon": "M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"
+  },
+  {
+   "name": "Commercial",
+   "icon": "M3 9l2-5h14l2 5M4 9v11h16V9M3 9h18M10 20v-6h4v6"
+  }
+ ],
+ "allIcon": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+ "soon": [],
+ "moreSoon": [],
+ "seed": "skins/ekp11/jobs.json",
+ "copy": {
+  "iAm": "I'm a waste carrier",
+  "sideTrade": "I'm a waste carrier",
+  "sideQuote": "Snap your rubbish",
+  "sideHead": "Waste types",
+  "soonBtn": "Join as a waste carrier",
+  "soonAria": "join the waste carrier waiting list",
+  "emptyBtn": "Snap your rubbish for a quote",
+  "emptySub": "New clear-ups go up every week.",
+  "crumbRoot": "Our work",
+  "tradeTitle": "Get your clear-ups on CleanUpSnap",
+  "tradeIntro": "We're opening to waste carriers soon. Snap the before and after, get a branded video for your socials and a record of the job. Join the waiting list for early access, with your first 3 quote requests free.",
+  "tradeLabel": "Main type of waste you take",
+  "galleryLabel": "How many old before/after clear-ups are on your phone?",
+  "shareTag": " · before and after by EKP 11 Waste Management",
+  "hashtags": "#BeforeAndAfter #EKP11"
+ },
+ "quote": {
+  "intro": "Snap your rubbish, answer a few quick questions, and EKP 11 Waste Management will come back to you with a quote.",
+  "label": "EKP 11 Waste Management",
+  "minPhotos": 1,
+  "maxPhotos": 6,
+  "types": [
+   "Household",
+   "Garden",
+   "Builders' waste",
+   "Cardboard & packaging",
+   "Furniture & bulky",
+   "Electricals"
+  ],
+  "hazardous": "asbestos, chemicals, paint or solvents, gas bottles",
+  "sizes": [
+   "A few bags",
+   "Half a van",
+   "Full van",
+   "Skip-sized",
+   "Not sure"
+  ],
+  "access": [
+   "Kerbside or drive",
+   "Inside, ground floor",
+   "Upstairs",
+   "Garden or yard"
+  ],
+  "who": [
+   "Home",
+   "Business"
+  ],
+  "freq": [
+   "One-off",
+   "Regular collections"
+  ],
+  "defaultOperator": "EKP11 Waste Management",
+  "photoDays": 90,
+  "face": "11"
+ },
+ "admin": {
+  "colours": {
+   "#D9381E": "#50A212",
+   "#FDF1EE": "#F1F8EA",
+   "#F0B8AE": "#C8E3AE",
+   "#A1260F": "#2E6804",
+   "#1F2124": "#1F2124"
+  }
+ },
+ "app": {
+  "name": "EKP 11 Waste Management",
+  "shortName": "EKP 11",
+  "benefits": [
+   "Opens full screen, straight from your home screen",
+   "See our latest before and after clear-ups",
+   "Snap your rubbish and get a quote from your phone",
+   "Nothing to pay and no account needed"
+  ]
+ }
+}

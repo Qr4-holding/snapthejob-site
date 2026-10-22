@@ -31,7 +31,7 @@
     </div>
     <div class="qz" id="qzBody">
       <div class="qz-bar" aria-hidden="true"><i id="qzBar"></i></div>
-      <div class="bubble"><span class="bface" aria-hidden="true">B</span><div><span id="qzSay"></span><small>${esc(Q.label || 'Brenda · AI assistant')}</small></div></div>
+      <div class="bubble"><span class="bface" aria-hidden="true">${esc(Q.face || 'B')}</span><div><span id="qzSay"></span><small>${esc(Q.label || 'Brenda · AI assistant')}</small></div></div>
       <div id="qzStep"></div>
       <div class="err" id="qzErr" role="alert"></div>
       <div class="qnav"><button class="btn" type="button" id="qzBack">Back</button><button class="send disp" type="button" id="qzNext">Next</button></div>

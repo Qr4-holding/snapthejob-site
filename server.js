@@ -5,6 +5,7 @@ const { Pool } = require('pg');
 const crypto = require('crypto');
 const fs = require('fs');
 const webpush = require('web-push');
+const QRCode = require('qrcode');
 
 const PORT = process.env.PORT || 3000;
 const SKIN_ID = /^[a-z0-9-]+$/.test(process.env.SKIN || '') ? process.env.SKIN : 'snapthejob';
@@ -294,6 +295,8 @@ app.get('/admin', auth, async (req, res, next) => { try {
       (SELECT count(*) FROM events WHERE ts::date = d AND type IN ('share','share_app'))::int shares,
       (SELECT count(*) FROM events WHERE ts::date = d AND type='quote')::int quotes,
       (SELECT count(*) FROM events WHERE ts::date = d AND type='follow')::int follows,
+      (SELECT count(*) FROM events WHERE ts::date = d AND type='install')::int installs,
+      (SELECT count(DISTINCT visitor) FROM events WHERE ts::date = d AND type='app_open')::int appusers,
       (SELECT count(*) FROM waitlist WHERE created_at::date = d)::int signups
     FROM generate_series(current_date - 29, current_date, interval '1 day') d ORDER BY d DESC`)).rows;
   const topJobs = (await pool.query("SELECT job, count(*)::int n FROM events WHERE type='play' AND ts > now() - interval '30 days' AND job <> '' GROUP BY job ORDER BY n DESC LIMIT 10")).rows;
@@ -306,9 +309,9 @@ app.get('/admin', auth, async (req, res, next) => { try {
   const jobName = slug => (JOBS.find(j => j.slug === slug) || {}).title || slug;
   const mini = (rows, label, key) => `<table style="min-width:0"><thead><tr><th>${label}</th><th>30 days</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(key(r))}</td><td>${r.n}</td></tr>`).join('') || '<tr><td colspan="2">Nothing yet</td></tr>'}</tbody></table>`;
   const statsHtml = `<h2>Visitors (last 30 days)</h2>
-<div class="k"><div><b>${sum('visitors')}</b>Visitors*</div><div><b>${sum('views')}</b>Page views</div><div><b>${sum('plays')}</b>Videos watched</div><div><b>${sum('shares')}</b>Shares</div><div><b>${sum('quotes')}</b>Quote clicks</div><div><b>${sum('follows')}</b>New follows</div></div>
+<div class="k"><div><b>${sum('visitors')}</b>Visitors*</div><div><b>${sum('views')}</b>Page views</div><div><b>${sum('plays')}</b>Videos watched</div><div><b>${sum('shares')}</b>Shares</div><div><b>${sum('quotes')}</b>Quote clicks</div><div><b>${sum('follows')}</b>New follows</div><div><b>${sum('installs')}</b>App installs</div><div><b>${sum('appusers')}</b>Opened from home screen*</div></div>
 <svg viewBox="0 0 600 104" width="100%" style="max-width:600px;display:block;border-bottom:1px solid #ddd" role="img" aria-label="Visitors per day, last 30 days">${bars}</svg>
-<p class="n">Bars: visitors per day, oldest on the left. *A visitor is counted once per day; no cookies are used.</p>
+<p class="n">Bars: visitors per day, oldest on the left. *Each person is counted once per day; no cookies are used. App installs are counted on Android and computers only; iPhones don't report installs, so they show up under Opened from home screen.</p>
 <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
 ${mini(topJobs, 'Most watched', r => jobName(r.job))}
 ${mini(topRefs, 'Came from', r => r.ref)}
@@ -416,7 +419,7 @@ app.get('/admin/waitlist.csv', auth, async (req, res) => {
 });
 
 // ---------- private visitor stats (no cookies; visitors counted with a daily-changing anonymous code) ----------
-const EV_TYPES = new Set(['view', 'play', 'share', 'share_app', 'quote', 'quote_sent', 'follow', 'trade']);
+const EV_TYPES = new Set(['view', 'play', 'share', 'share_app', 'quote', 'quote_sent', 'follow', 'trade', 'install', 'app_open']);
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor|curl|wget/i;
 let saltDay = '', salt = '';
 function visitorCode(req) {
@@ -453,12 +456,19 @@ app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
 const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
-  logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
+  appName: (SKIN.app || {}).shortName || SKIN.name, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
 const TOKENS = {
   ID: SKIN.id, NAME: esc(SKIN.name), THEME: SKIN.theme, FONTS: SKIN.fonts, LOGO_WORD: SKIN.logoWord, DESC: esc(SKIN.desc), OG_IMAGE: SKIN.ogImage,
   SEARCH_PH: esc(SKIN.searchPlaceholder), SEARCH_LABEL: esc(SKIN.searchLabel), CHIPS_LABEL: esc(SKIN.chipsLabel), FEED_TITLE: esc(SKIN.feedTitle),
   DISCLAIMER: SKIN.disclaimer, HEADER_ACTIONS: SKIN.headerActions, TABBAR: SKIN.tabbar, BODY_END: SKIN.bodyEnd || '',
   I_AM: esc((SKIN.copy || {}).iAm || "I'm a trade"),
+  APP_NAME: esc((SKIN.app || {}).shortName || SKIN.name),
+  APP_BENEFITS: ((SKIN.app || {}).benefits || [
+    'Opens full screen, straight from your home screen',
+    'Phone alerts when new videos go up (if you turn them on)',
+    'Share videos to WhatsApp, Instagram and TikTok in a tap',
+    'Nothing to pay and no account needed'
+  ]).map(b => `<li>${esc(b)}</li>`).join('\n'),
   HEAD: (SKIN.css ? `<link rel="stylesheet" href="${SKIN.css}">\n` : '') + `<script>window.SITE = ${JSON.stringify(SITE_JS).replace(/</g, '\\u003c')};</script>`
 };
 const brand = html => html.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => k in TOKENS ? TOKENS[k] : m);
@@ -466,7 +476,7 @@ function readTpl(name) {
   const own = path.join(SKIN_PUBLIC, name);
   return brand(fs.readFileSync(fs.existsSync(own) ? own : path.join(__dirname, 'public', name), 'utf8'));
 }
-const tpl = { index: readTpl('index.html'), job: readTpl('job.html'), contact: readTpl('contact.html'), privacy: readTpl('privacy.html') };
+const tpl = { index: readTpl('index.html'), job: readTpl('job.html'), contact: readTpl('contact.html'), privacy: readTpl('privacy.html'), app: readTpl('app.html') };
 const tradeLinks = `<nav class="tradelinks" aria-label="${esc(SKIN.browseAria || 'All trades')}"><b>${esc(SKIN.browseLabel || 'Browse trades:')}</b> ` +
   TRADES.map(t => `<a href="/${CAT}/${tradeSlug(t)}">${esc(t)}</a>`).join(' · ') + '</nav>';
 function page(html, { title, desc, url, image, extra = '' }) {
@@ -526,7 +536,7 @@ app.get('/job/:slug', (req, res, next) => {
 });
 app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
-  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/contact', '/privacy'];
+  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/app', '/contact', '/privacy'];
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
     urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
@@ -537,10 +547,36 @@ const sendPage = name => (req, res) => res.set('Cache-Control', 'public, max-age
   title: `${name === 'contact' ? 'Contact' : 'Privacy'} · ${SKIN.name}`, desc: name === 'contact' ? `Get in touch with ${SKIN.name}.` : `How ${SKIN.name} uses your details.`, url: '/' + name }));
 app.get(['/contact', '/contact.html'], sendPage('contact'));
 app.get(['/privacy', '/privacy.html'], sendPage('privacy'));
+// ---------- Get the app: install page with a QR code for the address being used ----------
+const qrCache = new Map();
+app.get(['/app', '/get-the-app', '/app.html'], async (req, res, next) => {
+  try {
+    if (req.path !== '/app') return res.redirect(301, '/app');
+    const host = /^[a-z0-9.-]+$/i.test(req.hostname || '') && req.hostname !== 'localhost' ? `https://${req.hostname}` : ORIGIN;
+    if (qrCache.size > 20) qrCache.clear();
+    if (!qrCache.has(host)) qrCache.set(host, await QRCode.toString(`${host}/app?src=qr`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111214', light: '#ffffff' } }));
+    const a = SKIN.app || {};
+    res.set('Cache-Control', 'public, max-age=300').send(page(tpl.app, {
+      title: a.pageTitle || `Get the ${a.shortName || SKIN.name} app`,
+      desc: a.pageDesc || `Put ${SKIN.name} on your phone's home screen. Free, no app store needed.`,
+      url: '/app'
+    }).replace('<!--QR-->', qrCache.get(host).replace('<svg ', `<svg role="img" aria-label="QR code for ${esc(host.replace('https://', ''))}/app" `)));
+  } catch (e) { next(e); }
+});
 app.get('/manifest.json', (req, res) => {
-  const m = JSON.parse(fs.readFileSync(path.join(__dirname, 'public/manifest.json'), 'utf8'));
-  if (SKIN.id !== 'snapthejob') Object.assign(m, { name: SKIN.name, short_name: SKIN.name, description: SKIN.desc, theme_color: SKIN.theme });
-  res.set('Cache-Control', 'public, max-age=3600').json(m);
+  const a = SKIN.app || {};
+  res.set('Cache-Control', 'public, max-age=3600').type('application/manifest+json').send(JSON.stringify({
+    id: '/', name: a.name || SKIN.name, short_name: a.shortName || SKIN.name,
+    description: a.description || SKIN.desc,
+    start_url: '/?src=app', scope: '/', display: 'standalone',
+    background_color: '#FFFFFF', theme_color: SKIN.theme,
+    icons: [
+      { src: '/assets/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/assets/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/assets/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    ],
+    shortcuts: (a.shortcuts || []).map(x => ({ name: x.name, url: x.url, icons: [{ src: '/assets/icon-192.png', sizes: '192x192' }] }))
+  }));
 });
 const swJs = fs.readFileSync(path.join(__dirname, 'public/sw.js'), 'utf8').replace(/SnapTheJob/g, SKIN.name.replace(/[^A-Za-z0-9 ]/g, ''));
 app.get('/sw.js', (req, res) => res.type('application/javascript').set('Cache-Control', 'no-cache').send(swJs));
