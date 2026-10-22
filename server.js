@@ -452,7 +452,7 @@ let jobsJs = 'window.STJ_JOBS = [];';
 const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN, approveJob: id => trades && trades.approve(id),
   onChange: list => { JOBS = list; jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(list).replace(/</g, '\\u003c') + ';'; } });
 const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS }) : null;
-app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=60' }).send(jobsJs));
+app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send(jobsJs));
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
 const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
@@ -496,7 +496,7 @@ const ld = o => `\n<script type="application/ld+json">${JSON.stringify(o).replac
 const isoDur = d => { const [m, s] = d.split(':').map(Number); return `PT${m ? m + 'M' : ''}${s}S`; };
 
 app.get(['/', '/index.html'], (req, res) => {
-  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
+  res.set('Cache-Control', 'no-cache').send(page(tpl.index, {
     title: SKIN.homeTitle,
     desc: SKIN.homeDesc,
     url: '/',
@@ -508,7 +508,7 @@ app.get(`/${CAT}/:t`, (req, res, next) => {
   const t = TRADES.find(x => tradeSlug(x) === req.params.t);
   if (!t) return next();
   const n = JOBS.filter(j => j.trade === t).length;
-  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.index, {
+  res.set('Cache-Control', 'no-cache').send(page(tpl.index, {
     title: fill(SKIN.catPageTitle, t),
     desc: fill(n ? SKIN.catPageDesc : SKIN.catPageDescEmpty, t),
     url: `/${CAT}/${tradeSlug(t)}`
@@ -523,7 +523,7 @@ app.get('/job/:slug', (req, res, next) => {
   if (!j) return next();
   const title = `${j.title} by ${j.biz} · ${SKIN.name}`;
   const desc = j.description || `Before and after video by ${j.biz}, ${j.trade}. Watch it on ${SKIN.name}.`;
-  res.set('Cache-Control', 'public, max-age=60').send(page(tpl.job, {
+  res.set('Cache-Control', 'no-cache').send(page(tpl.job, {
     title, desc, url: `/job/${j.slug}`, image: j.cover,
     extra: `\n<meta property="og:type" content="video.other">\n<meta property="og:video" content="${ORIGIN}${j.video}">` + ld({
       '@context': 'https://schema.org', '@type': 'VideoObject',
@@ -546,7 +546,7 @@ app.get('/sitemap.xml', (req, res) => {
 const trades = SKIN.trades ? require('./trades')({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs: () => jobsAdmin.reload(), sendPush, page, tpl }) : null;
 
 // ---------- static site ----------
-const sendPage = name => (req, res) => res.set('Cache-Control', 'public, max-age=60').send(page(tpl[name], {
+const sendPage = name => (req, res) => res.set('Cache-Control', 'no-cache').send(page(tpl[name], {
   title: `${name === 'contact' ? 'Contact' : 'Privacy'} · ${SKIN.name}`, desc: name === 'contact' ? `Get in touch with ${SKIN.name}.` : `How ${SKIN.name} uses your details.`, url: '/' + name }));
 app.get(['/contact', '/contact.html'], sendPage('contact'));
 app.get(['/privacy', '/privacy.html'], sendPage('privacy'));

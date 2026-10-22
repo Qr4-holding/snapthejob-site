@@ -15,6 +15,9 @@ const WORK_DIR = path.join(MEDIA_DIR, 'render');
 const ENGINE = path.join(__dirname, 'video', 'engine.py');
 const PYTHON = process.env.PYTHON || 'python3';
 const DAY = 864e5;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || '';
+const SCRIPT_MODEL = process.env.SCRIPT_MODEL || 'claude-haiku-5-5';
 
 module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs, sendPush, page, tpl }) {
   for (const d of [JOB_DIR, WORK_DIR]) { try { fs.mkdirSync(d, { recursive: true }); } catch (e) {} }
@@ -89,6 +92,8 @@ ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value
 </form>`);
 
   const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Ready: check it, then approve</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
+  const AI_TTS = !!ELEVEN_KEY, AI_SCRIPT = !!ANTHROPIC_KEY;
+  const VOICES = (SKIN.voices && SKIN.voices.length) ? SKIN.voices : [{ id: '1YfmfuouRyRwVbpAZP7R', name: 'Serena (UK, female)' }, { id: 'T9bEpk4Va2Kpk1mZWay7', name: 'Darren (UK, male)' }];
   const jobsPage = (biz, jobs, msg = '', bad = '') => wrap('My ' + C.jobWord + 's', `${jobs.some(r => r.status === 'processing') ? '<meta http-equiv="refresh" content="8">' : ''}
 <div class="trade-head"><div><h1 class="disp" style="font-size:28px;margin:0">${esc(biz.name)}</h1><p class="small" style="margin:2px 0 0">${esc(biz.trade || '')}${biz.town ? ' · ' + esc(biz.town) : ''}</p></div>
 <form method="post" action="/trade/logout" style="margin:0"><button class="btn" type="submit" style="min-height:40px">Sign out</button></form></div>
@@ -107,6 +112,13 @@ ${err(bad)}
 </div>
 <button type="button" class="btn" id="moreShots" style="align-self:flex-start;min-height:40px">+ Add more "during" photos (up to 5 in all)</button>
 <fieldset class="voice"><legend>Voiceover (optional)</legend>
+<div class="vmodes" role="radiogroup">
+<label><input type="radio" name="voice_mode" value="none" checked> No voice</label>
+<label><input type="radio" name="voice_mode" value="mic"> Record my voice</label>
+${AI_TTS ? `<label><input type="radio" name="voice_mode" value="script"> Type a script</label>` : ''}
+${AI_TTS && AI_SCRIPT ? `<label><input type="radio" name="voice_mode" value="ai"> AI writes it from my photos</label>` : ''}
+</div>
+<div data-vm="mic" hidden>
 <div class="vrow">
 <button type="button" class="btn btn-red" id="recBtn">Record with my mic</button>
 <span class="small" id="recState">Say what the job was, in your own words. Up to 30 seconds.</span>
@@ -114,7 +126,15 @@ ${err(bad)}
 <audio id="recPlay" controls hidden style="width:100%;margin-top:8px"></audio>
 <button type="button" class="btn tdel" id="recClear" hidden style="min-height:36px;margin-top:6px">Remove recording</button>
 <input type="file" name="voice" id="voiceFile" accept="audio/*" hidden>
-<p class="small" style="margin:8px 0 0">AI voice (Brenda): coming soon.</p>
+</div>
+<div data-vm="script ai" hidden>
+<button type="button" class="btn btn-red" id="aiWrite" data-vm="ai" hidden style="margin-bottom:8px">Write it from my photos</button>
+<span class="small" id="aiState" data-vm="ai" hidden></span>
+<label class="f">Script (what the voice will say; keep it short)<textarea name="script" id="scriptBox" maxlength="400" rows="4" placeholder="Before: a driveway full of an old sofa, carpet and bags. After: all cleared and swept, same day."></textarea></label>
+<label class="f" style="margin-top:8px">Voice<select name="voice_id">${VOICES.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('')}</select></label>
+<p class="small" style="margin:6px 0 0">An AI voice reads your script. It says it's an AI voice on the video.</p>
+</div>
+${AI_TTS ? '' : '<p class="small" style="margin:8px 0 0">AI voice: coming soon.</p>'}
 </fieldset>
 ${field('What was the ' + esc(C.jobWord) + '? (shown as the title)', `<input name="title" required maxlength="80" placeholder="${esc(C.titleHint || 'Garden cleared: old shed and green waste')}">`)}
 ${field(C.catLabel, `<select name="trade" required>${TRADES.map(t => `<option${t === biz.trade ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`)}
@@ -125,11 +145,29 @@ ${field('Anything else? (optional)', `<textarea name="description" maxlength="30
 </section>
 <h2 class="disp" style="font-size:22px;margin:22px 0 8px">My ${esc(C.jobWord)}s</h2>
 ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src="${esc(r.cover || '')}" alt=""><div><b>${esc(r.title)}</b><span class="small">${esc(r.trade)} · ${new Date(r.created_at).toLocaleDateString('en-GB')}</span>${statusPill(r)}
-<div class="tjob-a">${r.status === 'ready' && !r.approved ? `<a class="btn" href="${esc(r.play_video || r.video)}" target="_blank" rel="noopener">Watch</a><form method="post" action="/trade/jobs/${r.id}/approve" style="margin:0"><button class="btn btn-red" type="submit">Approve &amp; publish</button></form>` : ''}${r.status === 'ready' && r.approved && !r.hidden ? `<a class="btn" href="/job/${esc(r.slug)}">View</a><a class="btn btn-red" href="${esc(r.video)}" download>Save video</a>` : ''}<form method="post" action="/trade/jobs/${r.id}/delete" onsubmit="return confirm('Delete this ${esc(C.jobWord)} and its video?')" style="margin:0"><button class="btn tdel" type="submit">Delete</button></form></div></div></div>`).join('')}</div>` : `<p class="small">Nothing yet. Your first ${esc(C.jobWord)} will appear here.</p>`}
+<div class="tjob-a">${r.status === 'ready' && !r.approved ? `<a class="btn" href="${esc(r.play_video || r.video)}" target="_blank" rel="noopener">Watch</a><form method="post" action="/trade/jobs/${r.id}/approve" style="margin:0"><button class="btn btn-red" type="submit">Approve &amp; publish</button></form>` : ''}${r.status === 'ready' && r.approved && !r.hidden ? `<button class="btn btn-red" type="button" data-share="/job/${esc(r.slug)}" data-title="${esc(r.title)} by ${esc(r.biz)}" data-img="${esc(r.cover || '')}" data-video="${esc(r.video || '')}">Share</button><a class="btn" href="/job/${esc(r.slug)}">View</a><a class="btn" href="${esc(r.video)}" download>Save video</a>` : ''}<form method="post" action="/trade/jobs/${r.id}/delete" onsubmit="return confirm('Delete this ${esc(C.jobWord)} and its video?')" style="margin:0"><button class="btn tdel" type="submit">Delete</button></form></div></div></div>`).join('')}</div>` : `<p class="small">Nothing yet. Your first ${esc(C.jobWord)} will appear here.</p>`}
 <script>
 (function(){
   document.querySelectorAll('.shot input').forEach(function(i){ i.addEventListener('change', function(){ var f=i.files[0], img=i.parentNode.querySelector('img'), h=i.parentNode.querySelector('.shot-h'); if(!f) return; img.src=URL.createObjectURL(f); img.hidden=false; h.textContent='Change'; i.parentNode.classList.add('has'); }); });
   var f=document.getElementById('postForm'); f.addEventListener('submit', function(){ var b=document.getElementById('postBtn'); b.disabled=true; b.textContent='Uploading… keep this page open'; });
+  var showVm=function(){ var m=(document.querySelector('[name=voice_mode]:checked')||{}).value||'none'; document.querySelectorAll('[data-vm]').forEach(function(el){ el.hidden=el.dataset.vm.split(' ').indexOf(m)<0; }); };
+  document.querySelectorAll('[name=voice_mode]').forEach(function(r){ r.addEventListener('change',showVm); }); showVm();
+  var aw=document.getElementById('aiWrite');
+  if(aw) aw.addEventListener('click', async function(){
+    var st=document.getElementById('aiState'), box=document.getElementById('scriptBox');
+    var ins=[].slice.call(document.querySelectorAll('.shot input')).filter(function(i){ return i.files[0]; });
+    if(ins.length<2){ st.textContent='Add the before and after photos first.'; return; }
+    aw.disabled=true; st.textContent='Looking at your photos…';
+    try{
+      var fd=new FormData();
+      for(var k=0;k<ins.length;k++){ fd.append('photos', await shrink(ins[k].files[0]), 'p'+k+'.jpg'); fd.append('labels', ins[k].name); }
+      fd.append('title', document.querySelector('[name=title]').value); fd.append('trade', document.querySelector('[name=trade]').value);
+      var r=await fetch('/trade/script',{method:'POST',body:fd}); var j=await r.json();
+      if(!r.ok||!j.script) throw new Error(j.error||'Could not write a script. Try again or type your own.');
+      box.value=j.script; st.textContent='Done. Read it and change anything that is not right.';
+    }catch(e){ st.textContent=e.message; } finally{ aw.disabled=false; }
+  });
+  function shrink(file){ return new Promise(function(res,rej){ var img=new Image(); img.onload=function(){ var s=Math.min(1,900/Math.max(img.width,img.height)), c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); c.toBlob(function(b){ b?res(b):rej(new Error('Could not read a photo.')); },'image/jpeg',0.8); }; img.onerror=function(){ rej(new Error('Could not read a photo.')); }; img.src=URL.createObjectURL(file); }); }
   var more=document.getElementById('moreShots'); more.addEventListener('click', function(){ var n=document.querySelector('.shot.extra[hidden]'); if(n) n.hidden=false; if(!document.querySelector('.shot.extra[hidden]')) more.hidden=true; });
   // mic voiceover: recorded in the browser, sent with the photos
   var rb=document.getElementById('recBtn'), st=document.getElementById('recState'), pl=document.getElementById('recPlay'), cl=document.getElementById('recClear'), vf=document.getElementById('voiceFile'), rec=null, chunks=[], timer=null;
@@ -190,7 +228,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
     const biz = await current(req);
     if (!biz) return res.redirect(302, '/trade');
     const jobs = (await pool.query('SELECT * FROM jobs WHERE biz_id=$1 ORDER BY created_at DESC', [biz.id])).rows;
-    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). Then watch it and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Save video to post it on your own socials too.` }[req.query.m] || '';
+    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). Then watch it and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Share to post it on Facebook, WhatsApp, Instagram, TikTok and more.` }[req.query.m] || '';
     const bad = { bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
     res.set('Cache-Control', 'no-store').send(jobsPage(biz, jobs, msg, bad));
   } catch (e) { next(e); } });
@@ -203,7 +241,11 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       const biz = await current(req);
       if (!biz) { bin(); return res.redirect(302, '/trade'); }
       const b = req.body || {};
-      const before = (req.files.before || [])[0], after = (req.files.after || [])[0], during = (req.files.during || []).slice(0, 3), voice = (req.files.voice || [])[0];
+      const mode = ['mic', 'script', 'ai'].includes(b.voice_mode) ? b.voice_mode : 'none';
+      const before = (req.files.before || [])[0], after = (req.files.after || [])[0], during = (req.files.during || []).slice(0, 3);
+      const voice = mode === 'mic' ? (req.files.voice || [])[0] : null; if (mode !== 'mic' && (req.files.voice || [])[0]) fs.unlink(req.files.voice[0].path, () => {});
+      const script = (mode === 'script' || mode === 'ai') && ELEVEN_KEY ? clean(b.script, 400) : '';
+      const voiceId = VOICES.some(v => v.id === b.voice_id) ? b.voice_id : VOICES[0].id;
       const title = clean(b.title, 80), trade = TRADES.includes(b.trade) ? b.trade : biz.trade;
       if (!before || !after || !title || !b.confirm || !trade) { bin(); return res.redirect(303, '/trade/jobs?m=bad'); }
       let slug = slugify(title) || 'job', i = 2; const base = slug;
@@ -214,12 +256,38 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       const top = (await pool.query('SELECT coalesce(max(sort),0)+1 n FROM jobs')).rows[0].n;
       const { rows } = await pool.query(`INSERT INTO jobs (slug,title,biz,initials,trade,description,services,stages,voice,demo,status,sort,biz_id,approved)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$11,false,'processing',$9,$10,false) RETURNING id`,
-        [slug, title, biz.name, initials, trade, clean(b.description, 300), biz.services || [], stages, top, biz.id, !!voice]);
+        [slug, title, biz.name, initials, trade, clean(b.description, 300), biz.services || [], stages, top, biz.id, !!script]);
       const id = rows[0].id;
-      render(id, { biz, title, trade, photos: files, voice }).catch(e => console.error('Render failed', e.message));
+      render(id, { biz, title, trade, photos: files, voice, script, voiceId }).catch(e => console.error('Render failed', e.message));
       await reloadJobs();
       res.redirect(303, '/trade/jobs?m=posted');
     } catch (e) { bin(); next(e); }
+  });
+
+  const small = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3 * 1024 * 1024, files: 5, fields: 12 }, fileFilter: (req, file, cb) => cb(null, file.fieldname === 'photos' && /^image\//.test(file.mimetype)) });
+  const scriptUses = new Map();
+  app.post('/trade/script', sameOrigin, (req, res, next) => small.array('photos', 5)(req, res, e => e ? res.status(400).json({ error: 'The photos were too large.' }) : next()), async (req, res) => {
+    try {
+      const biz = await current(req);
+      if (!biz) return res.status(401).json({ error: 'Please sign in again.' });
+      if (!ANTHROPIC_KEY) return res.status(503).json({ error: 'AI scripts are not switched on yet.' });
+      const day = new Date().toISOString().slice(0, 10), k = biz.id + day, n = (scriptUses.get(k) || 0) + 1; scriptUses.set(k, n);
+      if (n > 30) return res.status(429).json({ error: 'That is the limit for today. Type your own script instead.' });
+      const files = req.files || [], labels = [].concat(req.body.labels || []);
+      if (files.length < 2) return res.status(400).json({ error: 'Add the before and after photos first.' });
+      const content = [];
+      files.forEach((f, i) => { content.push({ type: 'text', text: `Photo ${i + 1}: ${String(labels[i] || '').toUpperCase() || 'PHOTO'}` }); content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: f.buffer.toString('base64') } }); });
+      content.push({ type: 'text', text: `Business: ${biz.name}. Job title they gave: ${clean(req.body.title, 80) || '(none)'}. Type: ${clean(req.body.trade, 60) || biz.trade || ''}.
+Write a voiceover for a short before-and-after video of this job, in UK English, spoken by a friendly narrator.
+Rules: 2 to 4 short sentences, 35 words at most in total. Describe only what you can actually see in the photos. Do not invent places, prices, times, quantities, names or claims. No phone numbers or web addresses. Never use the words verified, guaranteed or certified. End with: "${biz.name}. Before, after, done."
+Reply with the script only, no quotes or headings.` });
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: SCRIPT_MODEL, max_tokens: 300, messages: [{ role: 'user', content }] }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { console.error('Script AI error', r.status, JSON.stringify(j).slice(0, 300)); return res.status(502).json({ error: 'The AI could not write a script just now. Try again or type your own.' }); }
+      const script = ((j.content || []).find(c => c.type === 'text') || {}).text || '';
+      res.json({ script: script.trim().replace(/^["“]|["”]$/g, '').slice(0, 400) });
+    } catch (e) { console.error('Script failed', e.message); res.status(500).json({ error: 'Something went wrong. Type your own script instead.' }); }
   });
 
   app.post('/trade/jobs/:id/approve', sameOrigin, async (req, res, next) => { try {
@@ -240,7 +308,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
   } catch (e) { next(e); } });
 
   // ---------- rendering: photos -> job.json -> video/engine.py -> social + site videos and covers ----------
-  async function render(id, { biz, title, trade, photos, voice }) {
+  async function render(id, { biz, title, trade, photos, voice, script, voiceId }) {
     const dir = path.join(WORK_DIR, `job-${id}-${crypto.randomBytes(3).toString('hex')}`);
     fs.mkdirSync(dir, { recursive: true });
     try {
@@ -257,7 +325,14 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
         await sharp(photos[i].path, { failOn: 'none' }).rotate().resize({ width: 2160, height: 2160, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 90 }).toFile(out);
         cfg.photos.push({ src: `p${i}.jpg`, label: labels[i] });
       }
-      if (voice) {
+      if (script) {
+        const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, { method: 'POST',
+          headers: { 'xi-api-key': ELEVEN_KEY, 'content-type': 'application/json', accept: 'audio/mpeg' },
+          body: JSON.stringify({ text: script, model_id: process.env.ELEVEN_MODEL || 'eleven_multilingual_v2' }) });
+        if (!r.ok) throw new Error('AI voice failed (' + r.status + '): ' + (await r.text()).slice(0, 200));
+        fs.writeFileSync(path.join(dir, 'voice.mp3'), Buffer.from(await r.arrayBuffer()));
+        cfg.voice = 'voice.mp3'; cfg.voice_free = true; cfg.ai_voice = true;
+      } else if (voice) {
         // mic recording -> plain AAC file the engine can time against
         await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', voice.path, '-vn', '-t', '35', '-c:a', 'aac', '-b:a', '128k', path.join(dir, 'voice.m4a')]);
         cfg.voice = 'voice.m4a'; cfg.voice_free = true;

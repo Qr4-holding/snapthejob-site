@@ -326,7 +326,7 @@
         <div class="crumb"><a href="/">${esc(C.crumbRoot)}</a> › <a href="/${CAT}/${slugify(j.trade)}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
         <h1 class="disp">${esc(j.title)}</h1>
         <div class="tags">${j.stages.map(s => `<span class="tag ${tagClass[s]}">${s}</span>`).join('')}
-          <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''} · Demo</span></div>
+          <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''}${j.demo ? ' · Demo' : ''}</span></div>
         <div class="biz"><span class="av" aria-hidden="true">${j.initials}</span>
           <div style="flex:1 1 160px;min-width:0"><div style="font-weight:700;font-size:19px">${esc(j.biz)}</div><div class="small" style="font-size:15px">${esc(j.trade)}</div></div>
           <button class="follow" type="button" data-follow="${slugify(j.biz)}" data-follow-name="${esc(j.biz)}" aria-pressed="false">Follow</button>

@@ -138,7 +138,7 @@ def chrome(img, cfg):
     fs = F('display', 22); x = 130
     for part, c in BRAND['strapline']:
         d.text((x, 92), part, font=fs, fill=col(c)); x += fs.getlength(part)
-    s = 'Posted by ' + cfg['business'] + ('  ·  AI voice' if cfg.get('voice') else '')
+    s = 'Posted by ' + cfg['business'] + ('  ·  AI voice' if (cfg.get('ai_voice') or (cfg.get('voice') and not cfg.get('voice_free'))) else '')
     fb = F('body', 26)
     d.text((W - 48 - fb.getlength(s), 62), s, font=fb, fill=GREY)
     d.rectangle((0, H - BOT, W, H), fill=INK)

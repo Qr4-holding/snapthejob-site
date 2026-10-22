@@ -297,3 +297,8 @@ button{font:inherit}
 .voice{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0}.voice legend{font-weight:700;padding:0 6px}
 .vrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.vrow .btn{min-height:44px}
 .rec-on{background:#A1260F!important;border-color:#A1260F!important}
+.vmodes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.vmodes label{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:600;font-size:14px;line-height:1.25;cursor:pointer}
+.vmodes label:has(input:checked){border-color:var(--red);background:var(--soft)}
+.vmodes input{width:18px;height:18px;flex:none;accent-color:var(--red)}
+#aiState{display:block;margin:0 0 8px}
