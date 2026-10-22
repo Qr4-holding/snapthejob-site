@@ -10,7 +10,7 @@ const MEDIA_DIR = process.env.MEDIA_DIR || '/data/media';
 const JOB_DIR = path.join(MEDIA_DIR, 'jobs');
 const TMP_DIR = path.join(MEDIA_DIR, 'tmp');
 
-module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN = {}, onChange }) {
+module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN = {}, onChange, approveJob }) {
   for (const d of [JOB_DIR, TMP_DIR]) { try { fs.mkdirSync(d, { recursive: true }); } catch (e) {} }
   app.use('/uploads', require('express').static(MEDIA_DIR, { maxAge: '7d', index: false, dotfiles: 'deny' }));
 
@@ -54,6 +54,8 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
            j.video, j.playVideo || j.video, j.cover, j.playCover || j.cover, j.dur, i--, j.date || null]);
       }
     }
+    await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT true');
+    await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS biz_id INT');
     await reload();
   }
   let ALL = [];
@@ -66,7 +68,7 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
   });
   async function reload() {
     ALL = (await pool.query('SELECT * FROM jobs ORDER BY sort DESC, created_at DESC')).rows;
-    onChange(ALL.filter(r => !r.hidden && r.status === 'ready').map(toPublic));
+    onChange(ALL.filter(r => !r.hidden && r.status === 'ready' && r.approved !== false).map(toPublic));
   }
 
   // ---------- processing (runs in the background after upload) ----------
@@ -171,13 +173,15 @@ ${flash ? `<p class="flash">${esc(flash)}</p>` : ''}${body}</body></html>`;
 
   app.get('/admin/jobs', auth, async (req, res, next) => { try {
     await reload();
-    const flash = { added: 'Job added. The video is being prepared; it appears on the site in a minute or two.', saved: 'Saved.', deleted: 'Job deleted.', bad: 'Please fill in the title, business and trade, and choose a video.' }[req.query.m] || '';
-    const cards = ALL.map(r => `<div class="job">
+    const flash = { added: 'Job added. The video is being prepared; it appears on the site in a minute or two.', saved: 'Saved.', deleted: 'Job deleted.', approved: 'Approved. It is live now.', bad: 'Please fill in the title, business and trade, and choose a video.' }[req.query.m] || '';
+    const cards = ALL.slice().sort((a, b) => (a.approved === false ? 0 : 1) - (b.approved === false ? 0 : 1)).map(r => `<div class="job">
 <img src="${esc(r.cover || '')}" alt="">
 <b>${esc(r.title)}</b><span class="n">${esc(r.biz)} · ${esc(r.trade)}</span>
-${r.status === 'processing' ? '<span class="pill">Preparing video…</span>' : r.status === 'failed' ? '<span class="pill red">Video failed: try another file</span>' : r.hidden ? '<span class="pill">Hidden</span>' : '<span class="pill dark">Live</span>'}${r.demo ? ' <span class="pill">Demo</span>' : ''}
+${r.status === 'processing' ? '<span class="pill">Preparing video…</span>' : r.status === 'failed' ? '<span class="pill red">Video failed: try another file</span>' : r.approved === false ? '<span class="pill red">Awaiting approval</span>' : r.hidden ? '<span class="pill">Hidden</span>' : '<span class="pill dark">Live</span>'}${r.demo ? ' <span class="pill">Demo</span>' : ''}
+${r.approved === false && r.status === 'ready' ? `<a class="b" href="${esc(r.play_video || r.video || '')}" target="_blank" rel="noopener" style="text-align:center;background:#fff;color:#1F2124;border:1px solid #C9CBC5">Watch</a><form method="post" action="/admin/jobs/${r.id}/approve" style="margin:0;display:grid"><button type="submit">Approve: go live + alert followers</button></form><form method="post" action="/admin/jobs/${r.id}/delete" onsubmit="return confirm('Reject and delete this job?')" style="margin:0;display:grid"><button class="del" type="submit">Reject</button></form>` : ''}
 <a class="b" href="/admin/jobs/${r.id}" style="text-align:center">Edit</a></div>`).join('');
-    res.set('Cache-Control', 'no-store').send(shell('Jobs', `<h1>Jobs</h1>
+    const waiting = ALL.filter(r => r.approved === false).length;
+    res.set('Cache-Control', 'no-store').send(shell('Jobs', `<h1>Jobs</h1>${waiting ? `<p class="flash">${waiting} job${waiting > 1 ? 's' : ''} waiting for your approval.</p>` : ''}
 <div class="thumbs">${cards || '<p>No jobs yet.</p>'}</div>
 <h2>Add a job</h2>
 <form class="card" method="post" action="/admin/jobs" enctype="multipart/form-data">
@@ -273,6 +277,11 @@ ${pickerScript}`, req.query.m === 'saved' ? (r.status === 'processing' ? 'Saved.
     res.redirect(303, `/admin/jobs/${id}?m=saved`);
   } catch (e) { next(e); } });
 
+  app.post('/admin/jobs/:id/approve', auth, sameOrigin, async (req, res, next) => { try {
+    if (approveJob) await approveJob(parseInt(req.params.id, 10) || 0);
+    await reload();
+    res.redirect(303, '/admin/jobs?m=approved');
+  } catch (e) { next(e); } });
   app.post('/admin/jobs/:id/delete', auth, sameOrigin, async (req, res, next) => { try {
     const r = (await pool.query('DELETE FROM jobs WHERE id=$1 RETURNING *', [parseInt(req.params.id, 10) || 0])).rows[0];
     if (r) for (const u of new Set([r.video, r.play_video, r.cover, r.play_cover])) removeFile(u);

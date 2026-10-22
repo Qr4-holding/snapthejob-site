@@ -61,7 +61,8 @@
   "tradeLabel": "Main type of waste you take",
   "galleryLabel": "How many old before/after clear-ups are on your phone?",
   "shareTag": " · before and after by EKP 11 Waste Management",
-  "hashtags": "#BeforeAndAfter #EKP11"
+  "hashtags": "#BeforeAndAfter #EKP11",
+  "jobWord": "job"
  },
  "quote": {
   "intro": "Snap your rubbish, answer a few quick questions, and EKP 11 Waste Management will come back to you with a quote.",
@@ -120,5 +121,48 @@
    "Snap your rubbish and get a quote from your phone",
    "Nothing to pay and no account needed"
   ]
+ },
+ "trades": true,
+ "video": {
+  "red": "#50A212",
+  "ink": "#1F2124",
+  "site": "ekp11.co.uk",
+  "name_parts": [
+   [
+    "EKP 11 ",
+    "white"
+   ],
+   [
+    "Waste Management",
+    "red"
+   ]
+  ],
+  "strapline": [
+   [
+    "Before, ",
+    "red"
+   ],
+   [
+    "After, ",
+    "white"
+   ],
+   [
+    "Done.",
+    "red"
+   ]
+  ],
+  "fonts": {
+   "display": "inter-800",
+   "bold": "inter-700",
+   "body": "inter-400"
+  }
+ },
+ "tradeCopy": {
+  "iAm": "I'm a waste carrier",
+  "noun": "waste carrier",
+  "nounCap": "Waste carrier",
+  "catLabel": "Type of waste",
+  "jobWord": "job",
+  "titleHint": "Drive cleared: sofa, carpet and bags"
  }
 }

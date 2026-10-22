@@ -262,7 +262,7 @@
     return `<article class="card">
       <a class="thumb" data-play="${j.slug}" href="/job/${j.slug}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}">
         <img src="${j.cover}" alt="${esc(j.alt)}" loading="lazy">
-        <span class="demo">DEMO</span><span class="dur">${j.dur}</span>
+        ${j.demo ? '<span class="demo">DEMO</span>' : ''}<span class="dur">${j.dur}</span>
       </a>
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
         <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job/${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
@@ -270,13 +270,17 @@
       <button class="btn share" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
   }
+  const TRADE_IN = !!(SITE.trades && /(^|;\s*)trade=1(;|$)/.test(document.cookie));
+  const tradeHref = SITE.trades ? (TRADE_IN ? '/trade/jobs#post' : '/trade') : '';
   function soon(trade) {
+    const label = TRADE_IN ? 'Post a ' + (C.jobWord || 'job') : C.soonBtn;
+    const btn = (cls, inner, aria) => SITE.trades
+      ? `<a class="${cls}" href="${tradeHref}"${aria ? ` aria-label="${aria}"` : ''}>${inner}</a>`
+      : `<button class="${cls}" type="button" data-waitlist="trade" data-trade="${esc(trade)}"${aria ? ` aria-label="${aria}"` : ''}>${inner}</button>`;
     return `<article class="card soon">
-      <button class="thumb" type="button" data-waitlist="trade" data-trade="${esc(trade)}" aria-label="${esc(trade)}: ${esc(C.soonAria)}">
-        ${svg(ICON[trade] || ICON.All, 34)}<span>${esc(trade)}<br><small style="font-weight:600">${esc(C.soonSub)}</small></span>
-      </button>
+      ${btn('thumb', `${svg(ICON[trade] || ICON.All, 34)}<span>${esc(trade)}<br><small style="font-weight:600">${esc(C.soonSub)}</small></span>`, `${esc(trade)}: ${esc(C.soonAria)}`)}
       <div class="meta"><div style="min-width:0"><span class="t">${esc(trade)}</span><span class="s">Coming soon</span></div></div>
-      <button class="btn" type="button" data-waitlist="trade" data-trade="${esc(trade)}">${esc(C.soonBtn)}</button>
+      ${btn('btn', esc(label))}
     </article>`;
   }
   function render() {
@@ -562,6 +566,22 @@
     finally { b.disabled = false; b.textContent = 'Send message'; }
   });
 
+
+  // ---------- trades / carriers: once signed in on this phone, the big button becomes "Post a job" ----------
+  if (SITE.trades) {
+    const signedIn = TRADE_IN;
+    document.querySelectorAll('[data-waitlist="trade"]').forEach(el => {
+      const a = document.createElement('a');
+      a.className = el.className; a.href = signedIn ? '/trade/jobs' : '/trade';
+      a.innerHTML = el.innerHTML; if (el.getAttribute('aria-label')) a.setAttribute('aria-label', el.getAttribute('aria-label'));
+      if (signedIn) { const t = a.querySelector('span'); if (t) t.textContent = 'My jobs'; else a.textContent = 'My jobs'; }
+      el.replaceWith(a);
+    });
+    if (signedIn) {
+      const pill = document.querySelector('.tabbar .snap');
+      if (pill) { const a = document.createElement('a'); a.className = pill.className; a.href = '/trade/jobs#post'; a.innerHTML = pill.innerHTML; const t = a.querySelector('span'); if (t) t.textContent = 'Post a ' + (SITE.copy.jobWord || 'job'); pill.replaceWith(a); }
+    }
+  }
   // ---------- Get the app (install to home screen) ----------
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

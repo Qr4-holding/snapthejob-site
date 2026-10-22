@@ -21,3 +21,7 @@ Per skin: `skin.json` → optional `"app": { "name", "shortName", "benefits": [.
 2. Make icons with `tools/make-icons.js`.
 3. New Docker project from `deploy/` with `SKIN=<id>` and its own domain labels.
 `skins/ekp11` is the EKP 11 Waste Management version (preview only, not deployed).
+
+## Carrier / trade area (`"trades": true` in the skin)
+`/trade` sign in or create account (cookie on their phone, 180 days). `/trade/jobs`: Post a job (before, optional during, after photos from camera or gallery) and My jobs.
+Photos are re-encoded (hidden data such as location dropped) and rendered by `video/engine.py` (python3 + Pillow in the container) into the social and site videos with the skin's `video` brand block. New jobs wait for approval in `/admin/jobs` (Approve = live + follower alert; Reject = delete). A signed-in carrier's home page shows "Post a job" in place of the customer button.

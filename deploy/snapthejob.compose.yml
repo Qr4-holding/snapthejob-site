@@ -6,7 +6,7 @@
 services:
   web:
     image: node:22-alpine
-    command: ["sh", "-c", "apk add --no-cache git ffmpeg >/dev/null && rm -rf /app && git clone --depth 1 https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
+    command: ["sh", "-c", "apk add --no-cache git ffmpeg python3 py3-pillow >/dev/null && rm -rf /app && git clone --depth 1 https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgres://stj:${DB_PASSWORD}@db:5432/stj

@@ -92,7 +92,8 @@
   "tradeLabel": "Main type of waste you take",
   "galleryLabel": "How many old before/after clear-ups are on your phone?",
   "shareTag": " · before and after on CleanUpSnap",
-  "hashtags": "#BeforeAndAfter #CleanUpSnap"
+  "hashtags": "#BeforeAndAfter #CleanUpSnap",
+  "jobWord": "job"
  },
  "quote": {
   "intro": "Hiya, I'm Brenda. Snap your rubbish, answer a few quick questions, and I'll pass it to a local licensed waste team for a quote.",
@@ -140,5 +141,48 @@
    "#A1260F": "#0E6B1F",
    "#1F2124": "#111214"
   }
+ },
+ "trades": true,
+ "video": {
+  "red": "#13B731",
+  "ink": "#111214",
+  "site": "CleanUpSnap.co.uk",
+  "name_parts": [
+   [
+    "CleanUp",
+    "white"
+   ],
+   [
+    "Snap",
+    "red"
+   ]
+  ],
+  "strapline": [
+   [
+    "Before, ",
+    "red"
+   ],
+   [
+    "After, ",
+    "white"
+   ],
+   [
+    "Share.",
+    "red"
+   ]
+  ],
+  "fonts": {
+   "display": "poppins-800",
+   "bold": "work-sans-700",
+   "body": "work-sans-400"
+  }
+ },
+ "tradeCopy": {
+  "iAm": "I'm a waste carrier",
+  "noun": "waste carrier",
+  "nounCap": "Waste carrier",
+  "catLabel": "Type of waste",
+  "jobWord": "job",
+  "titleHint": "Drive cleared: sofa, carpet and bags"
  }
 }

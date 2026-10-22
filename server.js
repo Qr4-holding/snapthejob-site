@@ -449,14 +449,14 @@ const TRADES = SKIN.categories.map(c => c.name);
 const tradeSlug = t => slugify(t);
 const CAT = SKIN.catPath || 'trades';
 let jobsJs = 'window.STJ_JOBS = [];';
-const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN,
+const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN, approveJob: id => trades && trades.approve(id),
   onChange: list => { JOBS = list; jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(list).replace(/</g, '\\u003c') + ';'; } });
 const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS }) : null;
 app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=60' }).send(jobsJs));
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
 const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
-  appName: (SKIN.app || {}).shortName || SKIN.name, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
+  appName: (SKIN.app || {}).shortName || SKIN.name, trades: !!SKIN.trades, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
 const TOKENS = {
   ID: SKIN.id, NAME: esc(SKIN.name), THEME: SKIN.theme, FONTS: SKIN.fonts, LOGO_WORD: SKIN.logoWord, DESC: esc(SKIN.desc), OG_IMAGE: SKIN.ogImage,
   SEARCH_PH: esc(SKIN.searchPlaceholder), SEARCH_LABEL: esc(SKIN.searchLabel), CHIPS_LABEL: esc(SKIN.chipsLabel), FEED_TITLE: esc(SKIN.feedTitle),
@@ -534,13 +534,16 @@ app.get('/job/:slug', (req, res, next) => {
     })
   }));
 });
-app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
+app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\nDisallow: /trade\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
   const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/app', '/contact', '/privacy'];
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
     urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
 });
+
+// ---------- trades / waste carriers: sign in, post a job from photos, my jobs ----------
+const trades = SKIN.trades ? require('./trades')({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs: () => jobsAdmin.reload(), sendPush, page, tpl }) : null;
 
 // ---------- static site ----------
 const sendPage = name => (req, res) => res.set('Cache-Control', 'public, max-age=60').send(page(tpl[name], {
@@ -591,6 +594,8 @@ process.on('unhandledRejection', e => console.error('Unhandled:', e && e.message
 app.use((err, req, res, next) => { console.error(err); res.status(500).send('Something went wrong. Please try again.'); });
 initDb().then(async () => {
   await jobsAdmin.init();
+  if (trades) await trades.init();
+  await jobsAdmin.reload();
   if (quotes) await quotes.init();
   const r = await pool.query("SELECT value FROM settings WHERE key='admin_hash'");
   if (r.rows[0]) adminHash = r.rows[0].value;
