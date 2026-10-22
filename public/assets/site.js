@@ -597,7 +597,8 @@
     const off = +store.get('app-bar-off') || 0;
     if (Date.now() - off < 30 * 864e5) return;
     const n = (+store.get('app-visits') || 0) + 1; store.set('app-visits', n);
-    if (n < 3 && !installEvt) return;
+    // Android: only when Chrome has a real one-tap install ready. iPhone: the Safari steps always work, so show from the 3rd page.
+    if (!installEvt && !(isIOS && n >= 3)) return;
     const bar = document.createElement('div');
     bar.className = 'appbar'; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Get the app');
     bar.innerHTML = `<img src="/assets/icon-192.png" width="40" height="40" alt=""><span><b>Get the app</b><small>${esc(SITE.appName || NAME)} · free, no app store</small></span><a class="btn btn-red" href="/app" data-install>${isIOS ? 'How' : 'Install'}</a><button type="button" class="appbar-x" aria-label="Not now">${svg('M6 6l12 12M18 6L6 18', 18)}</button>`;
