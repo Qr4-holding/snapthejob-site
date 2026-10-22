@@ -554,13 +554,13 @@ app.get(['/app', '/get-the-app', '/app.html'], async (req, res, next) => {
     if (req.path !== '/app') return res.redirect(301, '/app');
     const host = /^[a-z0-9.-]+$/i.test(req.hostname || '') && req.hostname !== 'localhost' ? `https://${req.hostname}` : ORIGIN;
     if (qrCache.size > 20) qrCache.clear();
-    if (!qrCache.has(host)) qrCache.set(host, await QRCode.toString(`${host}/app?src=qr`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111214', light: '#ffffff' } }));
+    if (!qrCache.has(host)) qrCache.set(host, await QRCode.toString(`${host}/?src=qr`, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111214', light: '#ffffff' } }));
     const a = SKIN.app || {};
     res.set('Cache-Control', 'public, max-age=300').send(page(tpl.app, {
       title: a.pageTitle || `Get the ${a.shortName || SKIN.name} app`,
       desc: a.pageDesc || `Put ${SKIN.name} on your phone's home screen. Free, no app store needed.`,
       url: '/app'
-    }).replace('<!--QR-->', qrCache.get(host).replace('<svg ', `<svg role="img" aria-label="QR code for ${esc(host.replace('https://', ''))}/app" `)));
+    }).replace('<!--QR-->', qrCache.get(host).replace('<svg ', `<svg role="img" aria-label="QR code for ${esc(host.replace('https://', ''))}" `)));
   } catch (e) { next(e); }
 });
 app.get('/manifest.json', (req, res) => {
