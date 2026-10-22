@@ -85,17 +85,17 @@ ${field('Email', `<input name="email" type="email" required autocomplete="email"
 ${field(tab === 'new' ? 'Choose a password (8 or more characters)' : 'Password', `<input name="password" type="password" required minlength="${tab === 'new' ? 8 : 1}" autocomplete="${tab === 'new' ? 'new-password' : 'current-password'}">`)}
 ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value="">Choose…</option>${TRADES.map(t => `<option${t === vals.trade ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`) + field('Town or area you cover', `<input name="town" maxlength="60" value="${esc(vals.town || '')}">`) : ''}
 <button class="send disp" type="submit">${tab === 'new' ? 'Create account' : 'Sign in'}</button>
-<p class="small" style="margin:0;text-align:center">${tab === 'new' ? `By creating an account you agree your ${esc(C.jobWord)} videos can be shown on ${esc(SKIN.name)} once approved. <a href="/privacy">Privacy</a>` : `No account yet? <a href="/trade?new=1">Create one</a>. Forgotten your password? <a href="/contact">Contact us</a>.`}</p>
+<p class="small" style="margin:0;text-align:center">${tab === 'new' ? `By creating an account you agree that the videos you publish are shown on ${esc(SKIN.name)}, and that ${esc(SKIN.name)} can remove any that break its rules. <a href="/privacy">Privacy</a>` : `No account yet? <a href="/trade?new=1">Create one</a>. Forgotten your password? <a href="/contact">Contact us</a>.`}</p>
 </form>`);
 
-  const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Waiting for approval</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
+  const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Ready: check it, then approve</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
   const jobsPage = (biz, jobs, msg = '', bad = '') => wrap('My ' + C.jobWord + 's', `${jobs.some(r => r.status === 'processing') ? '<meta http-equiv="refresh" content="8">' : ''}
 <div class="trade-head"><div><h1 class="disp" style="font-size:28px;margin:0">${esc(biz.name)}</h1><p class="small" style="margin:2px 0 0">${esc(biz.trade || '')}${biz.town ? ' · ' + esc(biz.town) : ''}</p></div>
 <form method="post" action="/trade/logout" style="margin:0"><button class="btn" type="submit" style="min-height:40px">Sign out</button></form></div>
 ${msg ? `<p class="tflash">${esc(msg)}</p>` : ''}
 <section id="post" class="tpost">
 <h2 class="disp" style="font-size:22px;margin:0 0 4px">Post a ${esc(C.jobWord)}</h2>
-<p class="small" style="margin:0 0 12px">Take the photos now or pick them from your gallery. We turn them into your before and after video; it goes live once ${esc(SKIN.name)} has checked it.</p>
+<p class="small" style="margin:0 0 12px">Take the photos now or pick them from your gallery. We turn them into your before and after video. Watch it, then tap Approve &amp; publish and it goes live.</p>
 ${err(bad)}
 <form method="post" action="/trade/jobs" enctype="multipart/form-data" class="tform" id="postForm">
 <div class="shots">
@@ -125,7 +125,7 @@ ${field('Anything else? (optional)', `<textarea name="description" maxlength="30
 </section>
 <h2 class="disp" style="font-size:22px;margin:22px 0 8px">My ${esc(C.jobWord)}s</h2>
 ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src="${esc(r.cover || '')}" alt=""><div><b>${esc(r.title)}</b><span class="small">${esc(r.trade)} · ${new Date(r.created_at).toLocaleDateString('en-GB')}</span>${statusPill(r)}
-<div class="tjob-a">${r.status === 'ready' && r.approved && !r.hidden ? `<a class="btn" href="/job/${esc(r.slug)}">View</a><a class="btn btn-red" href="${esc(r.video)}" download>Save video</a>` : ''}<form method="post" action="/trade/jobs/${r.id}/delete" onsubmit="return confirm('Delete this ${esc(C.jobWord)} and its video?')" style="margin:0"><button class="btn tdel" type="submit">Delete</button></form></div></div></div>`).join('')}</div>` : `<p class="small">Nothing yet. Your first ${esc(C.jobWord)} will appear here.</p>`}
+<div class="tjob-a">${r.status === 'ready' && !r.approved ? `<a class="btn" href="${esc(r.play_video || r.video)}" target="_blank" rel="noopener">Watch</a><form method="post" action="/trade/jobs/${r.id}/approve" style="margin:0"><button class="btn btn-red" type="submit">Approve &amp; publish</button></form>` : ''}${r.status === 'ready' && r.approved && !r.hidden ? `<a class="btn" href="/job/${esc(r.slug)}">View</a><a class="btn btn-red" href="${esc(r.video)}" download>Save video</a>` : ''}<form method="post" action="/trade/jobs/${r.id}/delete" onsubmit="return confirm('Delete this ${esc(C.jobWord)} and its video?')" style="margin:0"><button class="btn tdel" type="submit">Delete</button></form></div></div></div>`).join('')}</div>` : `<p class="small">Nothing yet. Your first ${esc(C.jobWord)} will appear here.</p>`}
 <script>
 (function(){
   document.querySelectorAll('.shot input').forEach(function(i){ i.addEventListener('change', function(){ var f=i.files[0], img=i.parentNode.querySelector('img'), h=i.parentNode.querySelector('.shot-h'); if(!f) return; img.src=URL.createObjectURL(f); img.hidden=false; h.textContent='Change'; i.parentNode.classList.add('has'); }); });
@@ -190,7 +190,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
     const biz = await current(req);
     if (!biz) return res.redirect(302, '/trade');
     const jobs = (await pool.query('SELECT * FROM jobs WHERE biz_id=$1 ORDER BY created_at DESC', [biz.id])).rows;
-    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). It goes live once ${SKIN.name} has checked it.`, deleted: 'Deleted.' }[req.query.m] || '';
+    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). Then watch it and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Save video to post it on your own socials too.` }[req.query.m] || '';
     const bad = { bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
     res.set('Cache-Control', 'no-store').send(jobsPage(biz, jobs, msg, bad));
   } catch (e) { next(e); } });
@@ -221,6 +221,14 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       res.redirect(303, '/trade/jobs?m=posted');
     } catch (e) { bin(); next(e); }
   });
+
+  app.post('/trade/jobs/:id/approve', sameOrigin, async (req, res, next) => { try {
+    const biz = await current(req);
+    if (!biz) return res.redirect(302, '/trade');
+    const r = (await pool.query("SELECT id FROM jobs WHERE id=$1 AND biz_id=$2 AND status='ready'", [parseInt(req.params.id, 10) || 0, biz.id])).rows[0];
+    if (r) await approve(r.id);
+    res.redirect(303, '/trade/jobs?m=live');
+  } catch (e) { next(e); } });
 
   app.post('/trade/jobs/:id/delete', sameOrigin, async (req, res, next) => { try {
     const biz = await current(req);
