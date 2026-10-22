@@ -293,3 +293,7 @@ button{font:inherit}
 .tpill.live{background:var(--ink);color:#fff}.tpill.wait{background:#FFF3D6;color:#7A4F00}.tpill.bad{background:#FDE8E4;color:#A1260F}
 .tjob-a{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}.tjob-a .btn{min-height:38px;padding:0 14px;font-size:14px}
 .tdel{border-color:var(--line);color:var(--muted)}
+
+.voice{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0}.voice legend{font-weight:700;padding:0 6px}
+.vrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.vrow .btn{min-height:44px}
+.rec-on{background:#A1260F!important;border-color:#A1260F!important}

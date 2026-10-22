@@ -30,8 +30,8 @@ module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, l
   const run = (cmd, args, opts = {}) => new Promise((resolve, reject) => execFile(cmd, args, Object.assign({ maxBuffer: 1 << 24 }, opts), (e, so, se) => e ? reject(new Error((se || '').trim() || e.message)) : resolve(so)));
   const upload = multer({
     dest: WORK_DIR,
-    limits: { fileSize: 25 * 1024 * 1024, files: 4, fields: 10, fieldSize: 5000 },
-    fileFilter: (req, file, cb) => cb(null, ['before', 'during', 'after'].includes(file.fieldname) && /^image\//.test(file.mimetype))
+    limits: { fileSize: 25 * 1024 * 1024, files: 6, fields: 10, fieldSize: 5000 },
+    fileFilter: (req, file, cb) => cb(null, (['before', 'during', 'after'].includes(file.fieldname) && /^image\//.test(file.mimetype)) || (file.fieldname === 'voice' && /^(audio|video)\//.test(file.mimetype)))
   });
 
   async function init() {
@@ -43,6 +43,8 @@ module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, l
     await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS biz_id INT');
     await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT true');
     await pool.query("DELETE FROM biz_sessions WHERE expires < now()").catch(() => {});
+    // a render that was cut off by a restart would stay "processing" for ever: mark it failed so the carrier can post again
+    await pool.query(`UPDATE jobs SET status='failed', error='The server restarted while the video was being made. Please post it again.' WHERE status='processing' AND biz_id IS NOT NULL AND created_at < now() - interval '20 minutes'`).catch(() => {});
   }
 
   // ---------- sessions (a cookie on the carrier's phone; they sign in once) ----------
@@ -87,7 +89,7 @@ ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value
 </form>`);
 
   const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Waiting for approval</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
-  const jobsPage = (biz, jobs, msg = '', bad = '') => wrap('My ' + C.jobWord + 's', `
+  const jobsPage = (biz, jobs, msg = '', bad = '') => wrap('My ' + C.jobWord + 's', `${jobs.some(r => r.status === 'processing') ? '<meta http-equiv="refresh" content="8">' : ''}
 <div class="trade-head"><div><h1 class="disp" style="font-size:28px;margin:0">${esc(biz.name)}</h1><p class="small" style="margin:2px 0 0">${esc(biz.trade || '')}${biz.town ? ' · ' + esc(biz.town) : ''}</p></div>
 <form method="post" action="/trade/logout" style="margin:0"><button class="btn" type="submit" style="min-height:40px">Sign out</button></form></div>
 ${msg ? `<p class="tflash">${esc(msg)}</p>` : ''}
@@ -100,7 +102,20 @@ ${err(bad)}
 <label class="shot"><span class="shot-l before">BEFORE</span><input type="file" name="before" accept="image/*" required><span class="shot-h">Tap to add</span><img alt="" hidden></label>
 <label class="shot"><span class="shot-l during">DURING</span><input type="file" name="during" accept="image/*"><span class="shot-h">Optional</span><img alt="" hidden></label>
 <label class="shot"><span class="shot-l after">AFTER</span><input type="file" name="after" accept="image/*" required><span class="shot-h">Tap to add</span><img alt="" hidden></label>
+<label class="shot extra" hidden><span class="shot-l during">DURING</span><input type="file" name="during" accept="image/*"><span class="shot-h">Optional</span><img alt="" hidden></label>
+<label class="shot extra" hidden><span class="shot-l during">DURING</span><input type="file" name="during" accept="image/*"><span class="shot-h">Optional</span><img alt="" hidden></label>
 </div>
+<button type="button" class="btn" id="moreShots" style="align-self:flex-start;min-height:40px">+ Add more "during" photos (up to 5 in all)</button>
+<fieldset class="voice"><legend>Voiceover (optional)</legend>
+<div class="vrow">
+<button type="button" class="btn btn-red" id="recBtn">Record with my mic</button>
+<span class="small" id="recState">Say what the job was, in your own words. Up to 30 seconds.</span>
+</div>
+<audio id="recPlay" controls hidden style="width:100%;margin-top:8px"></audio>
+<button type="button" class="btn tdel" id="recClear" hidden style="min-height:36px;margin-top:6px">Remove recording</button>
+<input type="file" name="voice" id="voiceFile" accept="audio/*" hidden>
+<p class="small" style="margin:8px 0 0">AI voice (Brenda): coming soon.</p>
+</fieldset>
 ${field('What was the ' + esc(C.jobWord) + '? (shown as the title)', `<input name="title" required maxlength="80" placeholder="${esc(C.titleHint || 'Garden cleared: old shed and green waste')}">`)}
 ${field(C.catLabel, `<select name="trade" required>${TRADES.map(t => `<option${t === biz.trade ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`)}
 ${field('Anything else? (optional)', `<textarea name="description" maxlength="300" rows="2" placeholder="Area, what you took, how long it took"></textarea>`)}
@@ -115,6 +130,24 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
 (function(){
   document.querySelectorAll('.shot input').forEach(function(i){ i.addEventListener('change', function(){ var f=i.files[0], img=i.parentNode.querySelector('img'), h=i.parentNode.querySelector('.shot-h'); if(!f) return; img.src=URL.createObjectURL(f); img.hidden=false; h.textContent='Change'; i.parentNode.classList.add('has'); }); });
   var f=document.getElementById('postForm'); f.addEventListener('submit', function(){ var b=document.getElementById('postBtn'); b.disabled=true; b.textContent='Uploading… keep this page open'; });
+  var more=document.getElementById('moreShots'); more.addEventListener('click', function(){ var n=document.querySelector('.shot.extra[hidden]'); if(n) n.hidden=false; if(!document.querySelector('.shot.extra[hidden]')) more.hidden=true; });
+  // mic voiceover: recorded in the browser, sent with the photos
+  var rb=document.getElementById('recBtn'), st=document.getElementById('recState'), pl=document.getElementById('recPlay'), cl=document.getElementById('recClear'), vf=document.getElementById('voiceFile'), rec=null, chunks=[], timer=null;
+  if(!window.MediaRecorder||!navigator.mediaDevices){ rb.disabled=true; st.textContent='Recording is not available in this browser.'; }
+  rb.addEventListener('click', async function(){
+    if(rec&&rec.state==='recording'){ rec.stop(); return; }
+    try{ var stream=await navigator.mediaDevices.getUserMedia({audio:true}); }catch(e){ st.textContent='Microphone not allowed. Check the browser permission and try again.'; return; }
+    var type=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(function(t){ return MediaRecorder.isTypeSupported(t); })||'';
+    rec=new MediaRecorder(stream, type?{mimeType:type}:{}); chunks=[];
+    rec.ondataavailable=function(e){ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=function(){ stream.getTracks().forEach(function(t){ t.stop(); }); clearTimeout(timer);
+      var blob=new Blob(chunks,{type:rec.mimeType||'audio/webm'}); var ext=(rec.mimeType||'').indexOf('mp4')>-1?'m4a':(rec.mimeType||'').indexOf('ogg')>-1?'ogg':'webm';
+      var dt=new DataTransfer(); dt.items.add(new File([blob],'voice.'+ext,{type:blob.type})); vf.files=dt.files;
+      pl.src=URL.createObjectURL(blob); pl.hidden=false; cl.hidden=false; rb.textContent='Record again'; rb.classList.remove('rec-on'); st.textContent='Recorded. Play it back to check, or record again.'; };
+    rec.start(); rb.textContent='Stop'; rb.classList.add('rec-on'); st.textContent='Recording… tap Stop when you have finished.';
+    timer=setTimeout(function(){ if(rec.state==='recording') rec.stop(); },30000);
+  });
+  cl.addEventListener('click', function(){ vf.value=''; pl.hidden=true; pl.src=''; cl.hidden=true; rb.textContent='Record with my mic'; st.textContent='Say what the job was, in your own words. Up to 30 seconds.'; });
 })();
 </script>`);
 
@@ -157,12 +190,12 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
     const biz = await current(req);
     if (!biz) return res.redirect(302, '/trade');
     const jobs = (await pool.query('SELECT * FROM jobs WHERE biz_id=$1 ORDER BY created_at DESC', [biz.id])).rows;
-    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two). It goes live once ${SKIN.name} has checked it.`, deleted: 'Deleted.' }[req.query.m] || '';
+    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). It goes live once ${SKIN.name} has checked it.`, deleted: 'Deleted.' }[req.query.m] || '';
     const bad = { bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
     res.set('Cache-Control', 'no-store').send(jobsPage(biz, jobs, msg, bad));
   } catch (e) { next(e); } });
 
-  const uploadSafe = (req, res, next) => upload.fields([{ name: 'before', maxCount: 1 }, { name: 'during', maxCount: 2 }, { name: 'after', maxCount: 1 }])(req, res, e => e ? res.redirect(303, '/trade/jobs?m=' + (e.code === 'LIMIT_FILE_SIZE' ? 'big' : 'bad')) : next());
+  const uploadSafe = (req, res, next) => upload.fields([{ name: 'before', maxCount: 1 }, { name: 'during', maxCount: 3 }, { name: 'after', maxCount: 1 }, { name: 'voice', maxCount: 1 }])(req, res, e => e ? res.redirect(303, '/trade/jobs?m=' + (e.code === 'LIMIT_FILE_SIZE' ? 'big' : 'bad')) : next());
   app.post('/trade/jobs', sameOrigin, uploadSafe, async (req, res, next) => {
     const files = [].concat(...Object.values(req.files || {}));
     const bin = () => files.forEach(f => fs.unlink(f.path, () => {}));
@@ -170,19 +203,20 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       const biz = await current(req);
       if (!biz) { bin(); return res.redirect(302, '/trade'); }
       const b = req.body || {};
-      const before = (req.files.before || [])[0], after = (req.files.after || [])[0], during = req.files.during || [];
+      const before = (req.files.before || [])[0], after = (req.files.after || [])[0], during = (req.files.during || []).slice(0, 3), voice = (req.files.voice || [])[0];
       const title = clean(b.title, 80), trade = TRADES.includes(b.trade) ? b.trade : biz.trade;
       if (!before || !after || !title || !b.confirm || !trade) { bin(); return res.redirect(303, '/trade/jobs?m=bad'); }
       let slug = slugify(title) || 'job', i = 2; const base = slug;
       while ((await pool.query('SELECT 1 FROM jobs WHERE slug=$1', [slug])).rows.length) slug = `${base}-${i++}`;
       const initials = (biz.name.match(/[A-Za-z0-9]+/g) || ['S', 'J']).slice(0, 2).map(w => w[0].toUpperCase()).join('');
       const stages = during.length ? ['BEFORE', 'DURING', 'AFTER'] : ['BEFORE', 'AFTER'];
+      const files = [before, ...during, after];
       const top = (await pool.query('SELECT coalesce(max(sort),0)+1 n FROM jobs')).rows[0].n;
       const { rows } = await pool.query(`INSERT INTO jobs (slug,title,biz,initials,trade,description,services,stages,voice,demo,status,sort,biz_id,approved)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,false,'processing',$9,$10,false) RETURNING id`,
-        [slug, title, biz.name, initials, trade, clean(b.description, 300), biz.services || [], stages, top, biz.id]);
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$11,false,'processing',$9,$10,false) RETURNING id`,
+        [slug, title, biz.name, initials, trade, clean(b.description, 300), biz.services || [], stages, top, biz.id, !!voice]);
       const id = rows[0].id;
-      render(id, { biz, title, trade, photos: [before, ...during, after], stages }).catch(e => console.error('Render failed', e.message));
+      render(id, { biz, title, trade, photos: files, voice }).catch(e => console.error('Render failed', e.message));
       await reloadJobs();
       res.redirect(303, '/trade/jobs?m=posted');
     } catch (e) { bin(); next(e); }
@@ -198,11 +232,12 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
   } catch (e) { next(e); } });
 
   // ---------- rendering: photos -> job.json -> video/engine.py -> social + site videos and covers ----------
-  async function render(id, { biz, title, trade, photos, stages }) {
+  async function render(id, { biz, title, trade, photos, voice }) {
     const dir = path.join(WORK_DIR, `job-${id}-${crypto.randomBytes(3).toString('hex')}`);
     fs.mkdirSync(dir, { recursive: true });
     try {
-      const labels = stages.length === 3 ? ['BEFORE', 'DURING', 'AFTER'] : stages.length === 4 ? ['BEFORE', 'DURING 1/2', 'DURING 2/2', 'AFTER'] : ['BEFORE', 'AFTER'];
+      const m = photos.length - 2; // number of during photos
+      const labels = ['BEFORE', ...Array.from({ length: m }, (_, i) => m === 1 ? 'DURING' : `DURING ${i + 1}/${m}`), 'AFTER'];
       const cfg = {
         out: 'job.mp4', business: biz.name, job_type: trade,
         services_line: (biz.services || []).slice(0, 3).join('  ·  ') || biz.town || '',
@@ -213,6 +248,11 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
         // re-encode (drops hidden data such as GPS), auto-rotate, cap size
         await sharp(photos[i].path, { failOn: 'none' }).rotate().resize({ width: 2160, height: 2160, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 90 }).toFile(out);
         cfg.photos.push({ src: `p${i}.jpg`, label: labels[i] });
+      }
+      if (voice) {
+        // mic recording -> plain AAC file the engine can time against
+        await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', voice.path, '-vn', '-t', '35', '-c:a', 'aac', '-b:a', '128k', path.join(dir, 'voice.m4a')]);
+        cfg.voice = 'voice.m4a'; cfg.voice_free = true;
       }
       fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(cfg));
       await run(PYTHON, [ENGINE, path.join(dir, 'job.json')], { env: Object.assign({}, process.env, { STJ_PRESET: process.env.STJ_PRESET || 'veryfast' }), timeout: 15 * 60e3 });
@@ -231,7 +271,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
       console.error('Video render failed', e.message);
       await pool.query(`UPDATE jobs SET status='failed', error=$1 WHERE id=$2`, [String(e.message).slice(0, 500), id]).catch(() => {});
     } finally {
-      for (const f of photos) fs.unlink(f.path, () => {});
+      for (const f of [...photos, voice]) if (f) fs.unlink(f.path, () => {});
       fs.rm(dir, { recursive: true, force: true }, () => {});
       await reloadJobs().catch(() => {});
     }

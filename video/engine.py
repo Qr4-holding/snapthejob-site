@@ -203,7 +203,15 @@ def voice_line_starts(mp3, n_lines):
 def plan(cfg):
     """Times are measured from the start of the reveal (after the cover)."""
     n = len(cfg['photos'])
-    if cfg.get('voice'):
+    if cfg.get('voice') and cfg.get('voice_free'):
+        # a mic recording: no line timing; photos share the voice evenly and the end card follows
+        dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', p(cfg['voice'])],
+                                   capture_output=True, text=True).stdout.strip() or 0)
+        P = max(n * HOLD, dur + VO_OFFSET - 2.0)
+        starts = [i * P / n for i in range(n)]
+        photo_end = P + 0.2
+        end_dur = max(END_SILENT, dur + VO_OFFSET + 1.0 - photo_end + XF)
+    elif cfg.get('voice'):
         ls, dur = voice_line_starts(p(cfg['voice']), n + 1)
         starts = [0.0] + [x + VO_OFFSET for x in ls[1:n]]
         photo_end = ls[n] + VO_OFFSET
