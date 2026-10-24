@@ -302,3 +302,11 @@ button{font:inherit}
 .vmodes label:has(input:checked){border-color:var(--red);background:var(--soft)}
 .vmodes input{width:18px;height:18px;flex:none;accent-color:var(--red)}
 #aiState{display:block;margin:0 0 8px}
+
+/* business profile */
+.profile{display:flex;flex-wrap:wrap;align-items:center;gap:14px;border:1px solid var(--line);border-radius:20px;padding:18px;margin:16px 0 8px}
+.profile .av{width:64px;height:64px;font-size:22px}
+.profile .pbody{flex:1 1 200px;min-width:0}
+.profile h1{margin:0;font-size:26px;line-height:1.15}
+.profile p{margin:4px 0 0}
+.meta .s a{color:inherit;text-decoration:underline;text-decoration-color:var(--line)}

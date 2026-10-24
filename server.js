@@ -503,6 +503,20 @@ app.get(['/', '/index.html'], (req, res) => {
     extra: ld({ '@context': 'https://schema.org', '@type': 'WebSite', name: SKIN.name, url: ORIGIN + '/', potentialAction: { '@type': 'SearchAction', target: ORIGIN + '/?q={search_term_string}', 'query-input': 'required name=search_term_string' } })
   }));
 });
+// Business profile: /business/<slug> shows one business's videos with a Get a quote button on each
+app.get('/business/:slug', (req, res, next) => {
+  const mine = JOBS.filter(j => slugify(j.biz) === req.params.slug);
+  if (!mine.length) return next();
+  const b = mine[0], n = mine.length;
+  const svc = [...new Set(mine.flatMap(j => j.services && j.services.length ? j.services : [j.trade]))].slice(0, 6);
+  const head = `<section class="profile" aria-label="${esc(b.biz)}"><span class="av" aria-hidden="true">${esc(b.initials)}</span><div class="pbody"><h1 class="disp">${esc(b.biz)}</h1><p class="small">${n} before and after video${n === 1 ? '' : 's'} · ${esc(svc.join(' · '))}</p></div><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(b.biz)}">Get a quote from ${esc(b.biz)}</button></section>`;
+  const html = page(tpl.index, {
+    title: `${b.biz} · before and after clear-ups · ${SKIN.name}`,
+    desc: `Watch before and after clear-ups by ${b.biz} on ${SKIN.name}, then snap your rubbish to get a quote.`,
+    url: `/business/${req.params.slug}`, image: b.cover
+  }).replace('<section class="grid" id="grid"', head + '<section class="grid" id="grid"');
+  res.set('Cache-Control', 'no-cache').send(html);
+});
 const fill = (s, t) => s.replace('{cat}', t).replace('{cat_lc}', t.toLowerCase());
 app.get(`/${CAT}/:t`, (req, res, next) => {
   const t = TRADES.find(x => tradeSlug(x) === req.params.t);
@@ -536,7 +550,7 @@ app.get('/job/:slug', (req, res, next) => {
 });
 app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\nDisallow: /trade\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
-  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), '/app', '/contact', '/privacy'];
+  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), ...[...new Set(JOBS.map(j => slugify(j.biz)))].map(b => `/business/${b}`), '/app', '/contact', '/privacy'];
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
     urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');

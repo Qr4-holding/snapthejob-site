@@ -254,6 +254,7 @@
 
   // ---------- home feed ----------
   const pathTrade = ((location.pathname.match(new RegExp('^/' + CAT + '/([a-z0-9-]+)')) || [])[1]);
+  const pathBiz = (location.pathname.match(/^\/business\/([a-z0-9-]+)/) || [])[1];
   const qTrade = new URLSearchParams(location.search).get('trade');
   const state = { trade: (pathTrade && TRADES.find(t => slugify(t) === pathTrade)) || (qTrade && ICON[qTrade] ? qTrade : 'All'), q: new URLSearchParams(location.search).get('q')?.toLowerCase() || '', view: 'grid' };
   try { state.view = localStorage.getItem('stj-view') || 'grid'; } catch (e) {}
@@ -265,7 +266,7 @@
         ${j.demo ? '<span class="demo">DEMO</span>' : ''}<span class="dur">${j.dur}</span>
       </a>
       <div class="meta"><span class="av" aria-hidden="true">${j.initials}</span>
-        <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job/${j.slug}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
+        <div style="min-width:0"><a class="t" data-play="${j.slug}" href="/job/${j.slug}">${esc(j.title)}</a><span class="s"><a href="/business/${slugify(j.biz)}">${esc(j.biz)}</a> · ${esc(j.trade)}</span></div></div>
       <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button>
       <button class="btn share" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}" aria-label="Share this job">${svg(SHARE, 19)}</button></div>
     </article>`;
@@ -285,10 +286,10 @@
   }
   function render() {
     const grid = $('#grid'); if (!grid) return;
-    let jobs = JOBS.filter(j => (state.trade === 'All' || j.trade === state.trade) &&
+    let jobs = JOBS.filter(j => (!pathBiz || slugify(j.biz) === pathBiz) && (state.trade === 'All' || j.trade === state.trade) &&
       (!state.q || (j.title + ' ' + j.biz + ' ' + j.trade + ' ' + j.services.join(' ')).toLowerCase().includes(state.q)));
     let html = jobs.map(card).join('');
-    if (state.trade === 'All' && !state.q) {
+    if (state.trade === 'All' && !state.q && !pathBiz) {
       html += (SITE.soon || []).filter(t => !JOBS.some(j => j.trade === t)).map(soon).join('');
     } else if (!jobs.length) {
       html = state.q
@@ -302,6 +303,7 @@
     const h = $('#feedTitle'); if (h) h.textContent = state.q ? `Results for "${state.q}"` : state.trade === 'All' ? (SITE.feedTitle || 'Latest jobs') : state.trade;
   }
   const chips = $('#chips');
+  if (chips && pathBiz) chips.hidden = true;
   if (chips) {
     chips.innerHTML = ['All', ...TRADES].map(t => `<button class="chip" type="button" data-trade="${esc(t)}" aria-pressed="false">${svg(ICON[t], 17)}${esc(t)}</button>`).join('');
     chips.addEventListener('click', e => { const c = e.target.closest('.chip'); if (!c) return; state.trade = c.dataset.trade; state.q = ''; if (sf) sf.q.value = ''; render();
@@ -328,7 +330,7 @@
         <div class="tags">${j.stages.map(s => `<span class="tag ${tagClass[s]}">${s}</span>`).join('')}
           <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''}${j.demo ? ' · Demo' : ''}</span></div>
         <div class="biz"><span class="av" aria-hidden="true">${j.initials}</span>
-          <div style="flex:1 1 160px;min-width:0"><div style="font-weight:700;font-size:19px">${esc(j.biz)}</div><div class="small" style="font-size:15px">${esc(j.trade)}</div></div>
+          <div style="flex:1 1 160px;min-width:0"><div style="font-weight:700;font-size:19px"><a href="/business/${slugify(j.biz)}" style="color:inherit">${esc(j.biz)}</a></div><div class="small" style="font-size:15px">${esc(j.trade)}</div></div>
           <button class="follow" type="button" data-follow="${slugify(j.biz)}" data-follow-name="${esc(j.biz)}" aria-pressed="false">Follow</button>
           <div class="services"><span style="background:none;font-weight:700;padding:6px 4px 6px 0">Services:</span>${j.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>
         </div>
@@ -389,7 +391,7 @@
     $('#vwAv').textContent = j.initials;
     $('#vwName').textContent = j.biz;
     const fb = $('#vwFollow'); fb.dataset.follow = slugify(j.biz); fb.dataset.followName = j.biz; paintFollows();
-    $('#vwBiz').href = '/job/' + j.slug;
+    $('#vwBiz').href = '/business/' + slugify(j.biz);
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
     const s = $('#vwShare'); s.dataset.share = '/job/' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover; s.dataset.video = j.video;
