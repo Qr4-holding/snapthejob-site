@@ -310,7 +310,7 @@ Write a voiceover for a short before-and-after video of this job, in UK English,
 Rules: 2 to 4 short sentences, 35 words at most in total. Describe only what you can actually see in the photos. Do not invent places, prices, times, quantities, names or claims. No phone numbers or web addresses. Never use the words verified, guaranteed or certified. End with: "${biz.name}. Before, after, done."
 Reply with the script only, no quotes or headings.` });
       const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: SCRIPT_MODEL, max_tokens: 300, messages: [{ role: 'user', content }] }) });
+        body: JSON.stringify({ model: SCRIPT_MODEL, max_tokens: 600, thinking: { type: 'disabled' }, messages: [{ role: 'user', content }] }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { console.error('Script AI error', r.status, JSON.stringify(j).slice(0, 300)); return res.status(502).json({ error: 'The AI could not write a script just now. Try again or type your own.' }); }
       const script = ((j.content || []).find(c => c.type === 'text') || {}).text || '';
