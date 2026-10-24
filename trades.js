@@ -336,6 +336,21 @@ Reply with the script only, no quotes or headings.` });
   } catch (e) { next(e); } });
 
   // ---------- rendering: photos -> job.json -> video/engine.py -> social + site videos and covers ----------
+  // How a business name is SAID: initials spelt out and digits one at a time ("EKP 11" -> "E K P one one"),
+  // so the voice never turns a name into a number. Captions and the site keep the written name.
+  const DIGIT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  function spokenName(name) {
+    return String(name || '').split(/\s+/).map(w => {
+      const m = /^([A-Z]{2,4})(\d{1,4})$/.exec(w);
+      if (m) w = m[1] + ' ' + m[2];
+      return w.split(' ').map(t => /^[A-Z]{2,4}$/.test(t) ? t.split('').join(' ') : /^\d{1,4}$/.test(t) ? t.split('').map(d => DIGIT_WORDS[+d]).join(' ') : t).join(' ');
+    }).join(' ');
+  }
+  function spokenForm(text, name) {
+    const spoken = spokenName(name);
+    if (!name || spoken === name) return text;
+    return String(text).split(name).join(spoken);
+  }
   async function render(id, { biz, title, trade, photos, voice, script, voiceId }) {
     const dir = path.join(WORK_DIR, `job-${id}-${crypto.randomBytes(3).toString('hex')}`);
     fs.mkdirSync(dir, { recursive: true });
@@ -356,7 +371,7 @@ Reply with the script only, no quotes or headings.` });
       if (script) {
         const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`, { method: 'POST',
           headers: { 'xi-api-key': ELEVEN_KEY, 'content-type': 'application/json', accept: 'audio/mpeg' },
-          body: JSON.stringify({ text: script, model_id: process.env.ELEVEN_MODEL || 'eleven_multilingual_v2' }) });
+          body: JSON.stringify({ text: spokenForm(script, biz.name), model_id: process.env.ELEVEN_MODEL || 'eleven_multilingual_v2' }) });
         if (!r.ok) throw new Error('AI voice failed (' + r.status + '): ' + (await r.text()).slice(0, 200));
         fs.writeFileSync(path.join(dir, 'voice.mp3'), Buffer.from(await r.arrayBuffer()));
         cfg.voice = 'voice.mp3'; cfg.voice_free = true; cfg.ai_voice = true;
