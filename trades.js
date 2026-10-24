@@ -92,7 +92,7 @@ ${tab === 'new' ? field(C.catLabel, `<select name="trade" required><option value
 <p class="small" style="margin:0;text-align:center">${tab === 'new' ? `By creating an account you agree that the videos you publish are shown on ${esc(SKIN.name)}, and that ${esc(SKIN.name)} can remove any that break its rules. <a href="/privacy">Privacy</a>` : `No account yet? <a href="/trade?new=1">Create one</a>. Forgotten your password? <a href="/contact">Contact us</a>.`}</p>
 </form>`);
 
-  const statusPill = r => r.status === 'processing' ? '<span class="tpill">Making your video…</span>' : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Ready: check it, then approve</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
+  const statusPill = r => r.status === 'processing' ? (queuePos(r.id) > 0 ? `<span class="tpill">In the queue: ${queuePos(r.id)} ahead. Keep posting, each one is made in turn.</span>` : '<span class="tpill">Making your video…</span>') : r.status === 'failed' ? '<span class="tpill bad">Video failed. Try again with clearer photos.</span>' : !r.approved ? '<span class="tpill wait">Ready: check it, then approve</span>' : r.hidden ? '<span class="tpill">Hidden</span>' : '<span class="tpill live">Live</span>';
   const ALL_VOICES = (SKIN.voices && SKIN.voices.length) ? SKIN.voices : [{ id: '1YfmfuouRyRwVbpAZP7R', name: 'Serena (UK, female)' }, { id: 'T9bEpk4Va2Kpk1mZWay7', name: 'Darren (UK, male)' }];
   let HAVE = null; // voice ids in the ElevenLabs account (null = not checked)
   const voices = () => HAVE ? ALL_VOICES.filter(v => HAVE.has(v.id)) : ALL_VOICES;
@@ -256,7 +256,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
     const biz = await current(req);
     if (!biz) return res.redirect(302, '/trade');
     const jobs = (await pool.query('SELECT * FROM jobs WHERE biz_id=$1 ORDER BY created_at DESC', [biz.id])).rows;
-    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). Then watch it and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Share to post it on Facebook, WhatsApp, Instagram, TikTok and more.` }[req.query.m] || '';
+    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). You can post the next job straight away; they are made one after the other. Then watch each one and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Share to post it on Facebook, WhatsApp, Instagram, TikTok and more.` }[req.query.m] || '';
     const bad = { bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
     res.set('Cache-Control', 'no-store').send(jobsPage(biz, jobs, msg, bad));
   } catch (e) { next(e); } });
@@ -286,7 +286,7 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$11,false,'processing',$9,$10,false) RETURNING id`,
         [slug, title, biz.name, initials, trade, clean(b.description, 300), biz.services || [], stages, top, biz.id, !!script]);
       const id = rows[0].id;
-      render(id, { biz, title, trade, photos: files, voice, script, voiceId }).catch(e => console.error('Render failed', e.message));
+      enqueueRender(id, { biz, title, trade, photos: files, voice, script, voiceId });
       await reloadJobs();
       res.redirect(303, '/trade/jobs?m=posted');
     } catch (e) { bin(); next(e); }
@@ -335,6 +335,14 @@ Reply with the script only, no quotes or headings.` });
     res.redirect(303, '/trade/jobs?m=deleted');
   } catch (e) { next(e); } });
 
+  // One video at a time, in the order posted, so a carrier can post a day's jobs in a row (or hand the phone
+  // to someone to do it) and each is made in turn; My jobs shows each one's place in the queue.
+  const renderQueue = []; let renderChain = Promise.resolve();
+  const queuePos = id => renderQueue.indexOf(id);
+  function enqueueRender(id, job) {
+    renderQueue.push(id);
+    renderChain = renderChain.then(() => render(id, job)).catch(e => console.error('Render failed', e.message)).finally(() => { const i = renderQueue.indexOf(id); if (i >= 0) renderQueue.splice(i, 1); });
+  }
   // ---------- rendering: photos -> job.json -> video/engine.py -> social + site videos and covers ----------
   // How a business name is SAID: initials spelt out and digits one at a time ("EKP 11" -> "E K P one one"),
   // so the voice never turns a name into a number. Captions and the site keep the written name.
