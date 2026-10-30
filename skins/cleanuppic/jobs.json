@@ -1,0 +1,26 @@
+[
+ {
+  "slug": "drive-cleared-sofa-carpet-bags",
+  "title": "Drive cleared: sofa, carpet and bags",
+  "biz": "Demo waste carrier",
+  "initials": "DW",
+  "trade": "House clearance",
+  "video": "/media/waste-clearance.mp4",
+  "cover": "/media/waste-clearance.jpg",
+  "dur": "0:09",
+  "stages": [
+   "BEFORE",
+   "AFTER"
+  ],
+  "voice": false,
+  "services": [
+   "House clearance",
+   "Garden waste",
+   "Furniture & bulky"
+  ],
+  "playVideo": "/media/waste-clearance-site.mp4",
+  "playCover": "/media/waste-clearance-site.jpg",
+  "date": "2026-10-21",
+  "description": "A driveway cleared of an old sofa, carpet and rubbish bags, leaving it clean and empty. Demo video."
+ }
+]

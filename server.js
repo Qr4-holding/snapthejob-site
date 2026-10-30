@@ -451,7 +451,7 @@ const CAT = SKIN.catPath || 'trades';
 let jobsJs = 'window.STJ_JOBS = [];';
 const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN, approveJob: id => trades && trades.approve(id),
   onChange: list => { JOBS = list; jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(list).replace(/</g, '\\u003c') + ';'; } });
-const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS }) : null;
+const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS, ORIGIN }) : null;
 app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send(jobsJs));
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin

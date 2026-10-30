@@ -1,9 +1,9 @@
-# CleanUpSnap site (SKIN=cleanupsnap) + its own PostgreSQL database (as deployed on the Hostinger VPS, Docker manager project "cleanupsnap").
+# CleanUpPic site (SKIN=cleanuppic; was CleanUpSnap) + its own PostgreSQL database (Hostinger VPS, Docker manager project "cleanupsnap").
 # Project environment (set on the server only, never in this repo):
-#   DB_PASSWORD, ADMIN_PASSWORD, VAPID_PUBLIC, VAPID_PRIVATE,
-#   NOINDEX=1 and SOON_HOSTS (while in development: e.g. SITE_HOSTS=dev.cleanupsnap.co.uk, cleanupsnap.co.uk and SOON_HOSTS=cleanupsnap.co.uk),
-#   PREVIEW_KEY (optional link-only lock),
-#   SITE_HOSTS=cleanupsnap.co.uk, REDIRECT_HOSTS=www.cleanupsnap.co.uk, cleanupsnap.com, www.cleanupsnap.com
+#   SKIN=cleanuppic, DB_PASSWORD, ADMIN_PASSWORD, VAPID_PUBLIC, VAPID_PRIVATE,
+#   NOINDEX=1 and SOON_HOSTS (only while in development), PREVIEW_KEY (optional link-only lock),
+#   SITE_HOSTS=cleanuppic.co.uk, dev.cleanupsnap.co.uk   REDIRECT_HOSTS=www.cleanuppic.co.uk, cleanupsnap.co.uk, www.cleanupsnap.co.uk   CANONICAL=https://cleanuppic.co.uk
+#   Quote alerts to operators: BREVO_SMTP_LOGIN, BREVO_SMTP_KEY, MAIL_FROM (verified sender), QUOTE_EMAIL (default operator), QUOTE_CC (optional copy)
 # Updating the site: push to main, then restart the project (the web container clones main on start).
 services:
   web:
@@ -11,7 +11,7 @@ services:
     command: ["sh", "-c", "apk add --no-cache git ffmpeg python3 py3-pillow >/dev/null && rm -rf /app && git clone --depth 1 https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
     environment:
       - NODE_ENV=production
-      - SKIN=cleanupsnap
+      - SKIN=${SKIN}
       - PREVIEW_KEY=${PREVIEW_KEY}
       - NOINDEX=${NOINDEX}
       - SOON_HOSTS=${SOON_HOSTS}
@@ -20,6 +20,11 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - VAPID_PUBLIC=${VAPID_PUBLIC}
       - VAPID_PRIVATE=${VAPID_PRIVATE}
+      - BREVO_SMTP_LOGIN=${BREVO_SMTP_LOGIN}
+      - BREVO_SMTP_KEY=${BREVO_SMTP_KEY}
+      - MAIL_FROM=${MAIL_FROM}
+      - QUOTE_EMAIL=${QUOTE_EMAIL}
+      - QUOTE_CC=${QUOTE_CC}
     volumes:
       - backups:/backups:ro
       - media:/data/media
@@ -28,7 +33,7 @@ services:
       caddy_0: ${SITE_HOSTS}
       caddy_0.reverse_proxy: "{{upstreams 3000}}"
       caddy_1: ${REDIRECT_HOSTS}
-      caddy_1.redir: "https://cleanupsnap.co.uk{uri} permanent"
+      caddy_1.redir: "${CANONICAL}{uri} permanent"
     networks:
       - web
       - internal

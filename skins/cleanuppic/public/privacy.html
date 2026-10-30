@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy · {{NAME}}</title>
+<meta name="description" content="How {{NAME}} uses your details.">
+<meta name="theme-color" content="{{THEME}}">
+<meta property="og:title" content="Privacy · {{NAME}}">
+<meta property="og:description" content="How {{NAME}} uses your details.">
+<meta property="og:image" content="{{OG_IMAGE}}">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="{{NAME}}">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{FONTS}}" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css?v=17">
+{{HEAD}}
+</head>
+<body>
+<header class="top"><div class="wrap">
+<a class="logo" href="/" aria-label="{{NAME}} home">
+<span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+{{LOGO_WORD}}
+</a>
+<form class="search" id="searchForm" action="/" role="search">
+<label class="sr" for="q">{{SEARCH_LABEL}}</label>
+<input id="q" name="q" type="search" placeholder="{{SEARCH_PH}}">
+<button type="submit" aria-label="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+</form>
+{{HEADER_ACTIONS}}
+</div></header>
+<main class="wrap" style="max-width:760px;padding-top:24px;padding-bottom:20px">
+<h1 class="disp" style="font-size:38px;margin:0 0 12px">Privacy</h1>
+<p><b>Preview draft.</b> This notice is being finalised before {{NAME}} opens to the public.</p>
+<p>This page explains what happens to the photos and details you give us on {{NAME}}.</p>
+<h2 class="disp">Who we are</h2>
+<p>{{NAME}} is in a private preview. The business that runs it will be named here before launch. You can reach us through our <a href="/contact">contact page</a>.</p>
+<h2 class="disp">Snap your rubbish: photos and quote requests</h2>
+<p>When you ask for a quote, we keep your photos of the rubbish and your answers: what the rubbish is, how much, where it is, home or business, one-off or regular, the postcode, your name, email and (if you add it) your mobile number and notes.</p>
+<p>Photos taken on a phone can carry hidden data, such as where the photo was taken. We remove all of it when your photo arrives, and we shrink the photo. Only the photo itself is kept.</p>
+<p>We send your request to the waste business you asked (if you tapped Get a quote under one of their videos) or to the local waste business we work with in your area, so they can quote. They use it only to quote for and do the job.</p>
+<p>We delete your photos 90 days after you send them. We can remove any photo sooner if you ask, and we remove anything inappropriate.</p>
+<p>If you tick the box to allow it, the waste business may use your photo as the "before" in their video of the job. No address is shown. You can change your mind before the job by contacting us.</p>
+<h2 class="disp">Waiting list</h2>
+<p>If you join the waiting list we keep the details you type in, only to email you about {{NAME}}. We do not sell your details.</p>
+<h2 class="disp">Visitor statistics</h2>
+<p>We count visits, videos watched and buttons tapped so we know what is working. We do this without cookies and without storing your IP address: each visitor gets an anonymous code that changes every day and cannot be traced back to you. Nothing is shared with advertisers or analytics companies.</p>
+<h2 class="disp">Following businesses</h2>
+<p>If you tap Follow, we either keep your phone's notification address (if you allow alerts) or your email address, together with which businesses you follow. We use it only to tell you about new videos from them. You can unfollow at any time.</p>
+<h2 class="disp">Where</h2>
+<p>Your photos and details are stored on our own server in the UK.</p>
+<h2 class="disp">Your rights</h2>
+<p>You can ask to see, correct or delete your details or photos through our <a href="/contact">contact page</a>. You can also complain to the Information Commissioner's Office (ico.org.uk).</p>
+</main>
+<footer class="foot"><div class="wrap">
+{{DISCLAIMER}}
+<p style="margin:0"><a href="/privacy">Privacy</a> · <a href="/contact">Contact</a> · <a href="/app">Get the app</a> · © 2026 {{NAME}}</p>
+</div></footer>
+{{TABBAR}}
+<script src="/assets/jobs.js?v=12"></script>
+<script src="/assets/site.js?v=16"></script>
+{{BODY_END}}
+</body>
+</html>

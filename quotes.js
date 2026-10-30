@@ -6,11 +6,12 @@ const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
+const mail = require('./mail');
 
 const QUOTE_DIR = process.env.QUOTE_DIR || '/data/quotes';
 const STATUSES = ['New', 'Sent to operator', 'Quoted', 'Won', 'Closed'];
 
-module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, getJobs, limited }) {
+module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, getJobs, limited, ORIGIN }) {
   const Q = SKIN.quote;
   try { fs.mkdirSync(path.join(QUOTE_DIR, 'tmp'), { recursive: true }); } catch (e) {}
   const upload = multer({
@@ -43,6 +44,38 @@ module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, 
       fs.rmSync(path.join(QUOTE_DIR, r.ref), { recursive: true, force: true });
       await pool.query('UPDATE quotes SET photos_deleted = true WHERE ref = $1', [r.ref]);
     }
+  }
+
+  // Email the quote to the operator it is routed to: the business that posted the video, or the skin's default operator.
+  // Address: the business's sign-in email, or QUOTE_EMAIL for the default operator. QUOTE_CC (optional) gets a copy of every alert.
+  async function operatorEmail(row) {
+    if (row.biz) {
+      const r = (await pool.query('SELECT email FROM businesses WHERE name=$1 AND status=$2 LIMIT 1', [row.biz, 'active'])).rows[0];
+      if (r && r.email) return r.email;
+    }
+    return process.env.QUOTE_EMAIL || '';
+  }
+  async function alertOperator(row, ref, n) {
+    if (!mail.ON) return;
+    const to = await operatorEmail(row);
+    if (!to) { console.error('Quote alert: no operator email for', row.routed_to); return; }
+    const line = (k, v) => v ? `${k}: ${v}\n` : '';
+    const text = `New quote request on ${SKIN.name} (ref ${ref})\n\n` +
+      line('Rubbish', row.waste_types.join(', ')) + line('How much', row.size) + line('Where it is', row.access) + line('Customer', `${row.who}, ${row.freq}`) +
+      line('Postcode', row.postcode) + line('Name', row.name) + line('Email', row.email) + line('Mobile', row.phone) + line('Notes', row.notes) +
+      line('Photos', `${n} attached`) + line('Photo may be used as a before shot', row.before_ok ? 'Yes' : 'No') +
+      `\nReply to this email to send your quote straight to the customer.\nAll requests: ${ORIGIN}/admin/quotes`;
+    const h = s => esc(String(s || ''));
+    const rows = [['Rubbish', row.waste_types.join(', ')], ['How much', row.size], ['Where it is', row.access], ['Customer', `${row.who}, ${row.freq}`], ['Postcode', row.postcode],
+      ['Name', row.name], ['Email', row.email], ['Mobile', row.phone || '–'], ['Notes', row.notes || '–'], ['Before shot allowed', row.before_ok ? 'Yes' : 'No']]
+      .map(([k, v]) => `<tr><td style="padding:4px 10px 4px 0;color:#555;white-space:nowrap;vertical-align:top">${h(k)}</td><td style="padding:4px 0">${h(v).replace(/\n/g, '<br>')}</td></tr>`).join('');
+    const html = `<div style="font-family:system-ui,Arial,sans-serif;color:#111;max-width:600px"><h2 style="margin:0 0 6px">New quote request</h2><p style="margin:0 0 14px;color:#555">${h(SKIN.name)} · ref ${h(ref)} · ${n} photo${n === 1 ? '' : 's'} attached</p>
+      <table style="border-collapse:collapse;font-size:15px">${rows}</table>
+      <p style="margin:16px 0 0"><b>Reply to this email</b> to send your quote straight to the customer.</p><p style="margin:6px 0 0;font-size:13px;color:#555">All requests: <a href="${ORIGIN}/admin/quotes">${ORIGIN}/admin/quotes</a></p></div>`;
+    const attachments = [];
+    for (let i = 1; i <= n; i++) { const fp = path.join(QUOTE_DIR, ref, `${i}.jpg`); if (fs.existsSync(fp)) attachments.push({ filename: `photo-${i}.jpg`, path: fp }); }
+    const r = await mail.send({ to, cc: process.env.QUOTE_CC || '', replyTo: `${row.name} <${row.email}>`, subject: `Quote request: ${row.waste_types.join(', ')} · ${row.size} · ${row.postcode}`, text, html, attachments });
+    if (r.ok) await pool.query('UPDATE quotes SET status=$2 WHERE ref=$1 AND status=$3', [ref, 'Sent to operator', 'New']);
   }
 
   app.post('/api/quote', (req, res, next) => {
@@ -91,6 +124,7 @@ module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, 
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
         [ref, row.biz, row.routed_to, row.waste_types, row.size, row.access, row.who, row.freq, row.postcode, row.name, row.email, row.phone, row.notes, row.before_ok, row.consent, n, row.source]);
       res.json({ ok: true, ref });
+      alertOperator(row, ref, n).catch(e => console.error('Quote alert failed', e.message));
     } catch (e) {
       console.error('Quote failed', e.message);
       fs.rmSync(dir, { recursive: true, force: true });
@@ -124,7 +158,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:0;font
 button{background:#D9381E;color:#fff;border:none;border-radius:18px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}button.del{background:#fff;color:#A1260F;border:1px solid #F0B8AE;padding:5px 10px;font-size:13px}select{font:inherit;padding:7px;border-radius:10px;border:1px solid #C9CBC5}</style></head><body>
 <nav><a href="/admin">Overview</a><a href="/admin/jobs">Jobs</a><a href="/admin/quotes" class="on">Quote requests</a><a href="/" target="_blank" rel="noopener">View site</a></nav>
 <h1 style="margin:6px 0">Quote requests (${rows.length})</h1>
-<p class="n">Home-page and Brenda requests go to ${esc(Q.defaultOperator || 'the local operator')}; requests from a video go to that business. Customer photos have their location data removed and are deleted after ${esc(Q.photoDays || 90)} days. Email alerts to operators switch on once email sending is set up.</p>
+<p class="n">Home-page and Brenda requests go to ${esc(Q.defaultOperator || 'the local operator')}; requests from a video go to that business. Customer photos have their location data removed and are deleted after ${esc(Q.photoDays || 90)} days. ${mail.ON ? 'Each request is emailed to the operator with the photos attached.' : 'Email alerts to operators switch on once email sending is set up.'}</p>
 ${flash ? `<p class="flash">${esc(flash)}</p>` : ''}${cards || '<p>No quote requests yet.</p>'}</body></html>`);
   } catch (e) { next(e); } });
 

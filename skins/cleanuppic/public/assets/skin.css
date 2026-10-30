@@ -1,0 +1,57 @@
+/* CleanUpPic skin: black and green on white. Loaded after the shared site.css. */
+:root{--red:#13B731;--red-dk:#0E8F26;--ink:#111214;--muted:#5C6168;--soft:#EEF8F0;--line:#BFE3C6;--grey:#E4ECE5}
+.disp{font-family:'Poppins','Work Sans',sans-serif}
+.top{border-bottom:2px solid var(--red)}
+.word b{font-size:25px}
+.search input{border-color:var(--ink)}
+.search button{background:var(--ink);border-color:var(--ink)}
+.btn{border-color:var(--ink);color:var(--ink)}
+.btn:hover{color:var(--ink)}
+.btn-red,.btn-red:hover{border-color:var(--red);color:#fff}
+.btn-red:hover{border-color:var(--red-dk)}
+.soon .thumb{background:repeating-linear-gradient(135deg,#E4ECE5 0 14px,#F5F9F5 14px 28px);color:#2E5E37}
+.soon .thumb svg{stroke:#2E5E37}
+.err{color:#A1260F}
+.tabbar{border-top:2px solid var(--red)}
+
+/* Brenda */
+.bface{width:44px;height:44px;border-radius:50%;background:var(--red);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;flex:none}
+.bface.sm{width:24px;height:24px;font-size:13px}
+.brenda{position:fixed;right:16px;bottom:20px;z-index:15;display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;border:none;border-radius:30px;padding:8px 18px 8px 8px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.2);font:inherit}
+.brenda b{display:block;font-size:15px;text-align:left}
+.brenda small{display:block;font-size:12px;opacity:.8;text-align:left}
+@media (max-width:720px){.brenda{display:none}}
+
+/* Snap your rubbish */
+.qz{display:flex;flex-direction:column;gap:16px}
+.qz-bar{height:6px;border-radius:3px;background:var(--grey);overflow:hidden}
+.qz-bar i{display:block;height:100%;background:var(--red);transition:width .2s}
+.bubble{background:var(--soft);border-radius:16px 16px 16px 4px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;line-height:1.45}
+.bubble .bface{width:34px;height:34px;font-size:15px}
+.bubble small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.drop{position:relative;border:2px dashed var(--red);border-radius:16px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;color:var(--red-dk);font-weight:700;cursor:pointer;background:#FAFDFA;padding:14px}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop small{font-weight:400;color:var(--muted);font-size:13px}
+.phs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phs figure{margin:0;position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--grey)}
+.phs img{width:100%;height:100%;object-fit:cover;display:block}
+.phs button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(17,18,20,.75);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.qh{font-weight:700;font-size:17px;margin:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{min-height:44px;padding:0 16px;border-radius:22px;border:1px solid #C9CFCA;background:#fff;font-weight:600;font-size:15px;cursor:pointer;color:var(--ink)}
+.opt[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.haz{border:1px solid #F0C9A8;background:#FFF8F1;border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45}
+.qnav{display:flex;gap:10px}
+.qnav .send{flex:1}
+.qnav .btn{min-height:54px}
+.sum{border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.sum dl{margin:0;display:grid;grid-template-columns:auto 1fr}
+.sum dt,.sum dd{margin:0;padding:9px 12px;border-top:1px solid #EEF2EE;font-size:15px}
+.sum dt{color:var(--muted);font-weight:600}
+.sum dd{font-weight:600}
+.sum .phs{padding:10px;grid-template-columns:repeat(6,1fr);gap:6px}
+.sum .phs figure{border-radius:8px}
+
+/* strapline under the logo: small, not bold, green / black / green */
+.word small.strap{font-family:'Work Sans',system-ui,sans-serif;font-weight:400;font-size:13px;letter-spacing:.01em;color:var(--ink);margin-top:4px}
+.word small.strap .red{color:var(--red)}
