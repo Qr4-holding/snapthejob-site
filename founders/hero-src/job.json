@@ -1,0 +1,17 @@
+{
+ "out": "hero.mp4",
+ "business": "Dale Valley Clearances",
+ "job_type": "Garage clearance",
+ "add_labels": true,
+ "hold": 5.0,
+ "end_hold": 5.0,
+ "reg_text": "Dale Valley Clearances · Registered carrier · CBDU123456",
+ "photos": [{"src": "demo-before.jpg", "label": "BEFORE"}, {"src": "demo-after.jpg", "label": "AFTER"}],
+ "end_lines": [
+  ["Founder places", 104, "display", "white", 540],
+  ["10 per area  ·  £49/month", 60, "display", "red", 700],
+  ["Claim yours at", 44, "body", "grey", 900],
+  ["cleanuppic.co.uk/founders", 62, "display", "white", 970]
+ ],
+ "brand": {"red": "#13B731", "ink": "#111214", "site": "CleanUpPic.co.uk", "name_parts": [["CleanUp","white"],["Pic","red"]], "strapline": [["Before, ","red"],["After, ","white"],["Share.","red"]], "fonts": {"display":"poppins-800","bold":"work-sans-700","body":"work-sans-400"}}
+}

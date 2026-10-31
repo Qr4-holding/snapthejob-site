@@ -1,5 +1,6 @@
 {
  "id": "cleanuppic",
+ "founders": true,
  "name": "CleanUpPic",
  "origin": "https://cleanuppic.co.uk",
  "theme": "#13B731",

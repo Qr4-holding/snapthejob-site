@@ -147,9 +147,29 @@ def chrome(img, cfg):
     d.rounded_rectangle((px, py, px + pw, py + ph), 42, fill=RED)
     q = 'Get a quote'; fq = F('display', 38)
     d.text((px + (pw - fq.getlength(q)) / 2, py + 14), q, font=fq, fill=WHITE)
+    if cfg.get('reg_text'):  # registered-carrier tag, bottom-left over the photo, just above the bar
+        ft = F('bold', 30); tw = ft.getlength(cfg['reg_text']); bx, by = 36, H - BOT - 28 - 62
+        tag = Image.new('RGBA', (W, H), (0, 0, 0, 0)); td = ImageDraw.Draw(tag)
+        td.rounded_rectangle((bx, by, bx + tw + 44, by + 62), 14, fill=(17, 18, 20, 190))
+        td.text((bx + 22, by + 12), cfg['reg_text'], font=ft, fill=WHITE + (255,))
+        img = Image.alpha_composite(img.convert('RGBA'), tag).convert('RGB')
     return img
 
+def end_frame_lines(t, cfg):
+    """Custom end card: cfg["end_lines"] = [[text, size, font kind, colour, y], ...], then the strapline. Used for the founder ad."""
+    img = Image.new('RGBA', (W, H), INK + (255,))
+    for k, (text, size, kind, colour, y) in enumerate(cfg['end_lines']):
+        a = ease(prog(t, 0.1 + 0.35 * k, 0.5))
+        if a <= 0: continue
+        f = F(kind, size)
+        while f.getlength(text) > W - 100 and size > 28: size -= 2; f = F(kind, size)
+        L = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(L)
+        d.text(((W - f.getlength(text)) / 2, y + (1 - a) * 20), text, font=f, fill=col(colour) + (int(255 * a),))
+        img.alpha_composite(L)
+    return img.convert('RGB')
+
 def end_frame(t, cfg):
+    if cfg.get('end_lines'): return end_frame_lines(t, cfg)
     img = Image.new('RGBA', (W, H), INK + (255,))
     def txt(y, s, f, fill, a0):
         a = ease(prog(t, a0, 0.5))
@@ -219,9 +239,10 @@ def plan(cfg):
         total = dur + VO_OFFSET + 1.0
         end_dur = total - photo_end + XF
     else:
-        starts = [i * HOLD for i in range(n)]
-        photo_end = starts[-1] + HOLD + 0.2
-        end_dur = END_SILENT
+        hold = cfg.get('hold', HOLD)
+        starts = [i * hold for i in range(n)]
+        photo_end = starts[-1] + hold + 0.2
+        end_dur = cfg.get('end_hold', END_SILENT)
     return starts, photo_end, end_dur
 
 # ---------------------------------------------------------------- render

@@ -25,3 +25,10 @@ Per skin: `skin.json` → optional `"app": { "name", "shortName", "benefits": [.
 ## Carrier / trade area (`"trades": true` in the skin)
 `/trade` sign in or create account (cookie on their phone, 180 days). `/trade/jobs`: Post a job (before, optional during, after photos from camera or gallery) and My jobs.
 Photos are re-encoded (hidden data such as location dropped) and rendered by `video/engine.py` (python3 + Pillow in the container) into the social and site videos with the skin's `video` brand block. New jobs wait for approval in `/admin/jobs` (Approve = live + follower alert; Reject = delete). A signed-in carrier's home page shows "Post a job" in place of the customer button.
+
+## Founders page (`"founders": true` in the skin; cleanuppic only)
+`/founders` (noindex until approved): the founder-places sales page, built from `founders/page.html` (approved mock: `founders/mock.html`).
+- Video: `public/founders/hero.mp4` + `poster.jpg`, a 16 s placeholder made with `video/engine.py` from `founders/hero-src/job.json` (made-up carrier "Dale Valley Clearances", CBDU123456). Rebuild: `python3 video/engine.py founders/hero-src/job.json --social`. The engine's optional `reg_text` (registered-carrier tag), `end_lines` (custom end card), `hold` and `end_hold` (seconds) are used only here; other jobs render exactly as before.
+- Form → `POST /api/founders`: UK postcode, business name, UK mobile, carrier registration. Must be CBDU + 6 numbers, found on the Environment Agency register (`ea.js`), upper tier, not expired. Saved to the `founders` table with a place per postcode district (10 per district; after that a waiting-list number). An email goes to `hello@cleanuppic.co.uk` (`FOUNDERS_EMAIL` to change) through `mail.js`.
+- Admin: `/admin/founders` lists applications by area with the count per area.
+- Tests: `DATABASE_URL=postgres://… node test/founders.js` (the register is faked so tiers, expiry, unknown numbers and a register outage can all be tested).
