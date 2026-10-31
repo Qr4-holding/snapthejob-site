@@ -348,7 +348,7 @@
 <div class="vw" id="vw" hidden role="dialog" aria-modal="true" aria-label="Video player">
   <div class="vw-top">
     <button class="vw-x" type="button" id="vwClose" aria-label="Back to jobs">${svg('M15 18l-6-6 6-6', 26, 'currentColor')}</button>
-    <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="word"><b class="disp">Snap<span class="red">The</span>Job</b><small class="disp"><span class="red">Before,</span> After, <span class="red">Share.</span></small></span></a>
+    <a class="logo vw-logo" href="/" aria-hidden="true" tabindex="-1"><span class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>${SITE.logoWord || '<span class="word"><b class="disp">Snap<span class="red">The</span>Job</b></span>'}</a>
   </div>
   <nav class="vw-side" aria-label="Browse">
     <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
