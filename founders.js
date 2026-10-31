@@ -30,7 +30,7 @@ function registration(raw) {
   return { ok: true, number: n };
 }
 
-module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, fetchImpl }) {
+module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, fetchImpl, brand, getJobs }) {
   const clean = (v, max = 200) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, max) : '');
   const lookup = number => ea.lookup(number, fetchImpl ? { fetchImpl } : {});
   const TO = process.env.FOUNDERS_EMAIL || 'hello@cleanuppic.co.uk';
@@ -47,7 +47,50 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
     ? `You're founder place ${position} of ${PLACES} for ${area}. We'll text you when your place is confirmed.`
     : `The ${PLACES} founder places for ${area} are taken. You're number ${position - PLACES} on the waiting list for ${area}, and we'll text you if a place opens.`;
 
-  app.get('/founders', (req, res) => res.set({ 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex, nofollow' }).type('html').send(fs.readFileSync(PAGE, 'utf8')));
+  // ---------- "Latest clear-ups": the four newest real jobs from the hub's own job feed ----------
+  // On the live site this is the local job list. A preview with its own empty database sets FOUNDERS_FEED_URL
+  // (e.g. https://cleanuppic.co.uk/assets/jobs.js) and the same four jobs are read from there, cached for 5 minutes.
+  const FEED = process.env.FOUNDERS_FEED_URL || '';
+  const fetchF = fetchImpl || (typeof fetch === 'function' ? fetch : null);
+  let cache = { at: 0, jobs: [] };
+  async function newest(n = 4) {
+    let jobs;
+    if (!FEED) jobs = getJobs ? getJobs() : [];
+    else if (Date.now() - cache.at < 300000 && cache.jobs.length) jobs = cache.jobs;
+    else {
+      jobs = cache.jobs;
+      try {
+        const r = await fetchF(FEED, { signal: AbortSignal.timeout(6000) });
+        const body = await r.text();
+        const list = JSON.parse(body.slice(body.indexOf('=') + 1).trim().replace(/;$/, ''));
+        const base = new URL(FEED).origin;
+        const abs = u => (typeof u === 'string' && u.startsWith('/') ? base + u : u);
+        jobs = list.map(j => Object.assign({}, j, { video: abs(j.video), playVideo: abs(j.playVideo), cover: abs(j.cover), playCover: abs(j.playCover) }));
+        cache = { at: Date.now(), jobs };
+      } catch (e) { console.error('Founders feed:', e.message); }
+    }
+    return (jobs || []).filter(j => j && !j.demo).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, n);
+  }
+  const card = j => `<article class="card">
+      <a class="thumb" data-play="${esc(j.slug)}" href="/job/${esc(j.slug)}" aria-label="Watch: ${esc(j.title)} by ${esc(j.biz)}"><img src="${esc(j.cover)}" alt="${esc(j.alt || j.title)}" loading="lazy"><span class="dur">${esc(j.dur || '')}</span></a>
+      <div class="meta"><span class="av" aria-hidden="true">${esc(j.initials || '')}</span><div style="min-width:0"><a class="t" data-play="${esc(j.slug)}" href="/job/${esc(j.slug)}">${esc(j.title)}</a><span class="s">${esc(j.biz)} · ${esc(j.trade)}</span></div></div>
+      <div class="cta"><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote</button></div>
+    </article>`;
+
+  // The page is the hub's own shell (fonts, site.css, skin.css, header, quote flow), so it is the same site.
+  app.get('/founders', async (req, res, next) => { try {
+    const jobs = await newest();
+    let html = fs.readFileSync(PAGE, 'utf8').replace('{{CLEARUPS}}', jobs.map(card).join('\n'));
+    if (brand) html = brand(html);
+    res.set({ 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex, nofollow' }).type('html').send(html);
+  } catch (e) { next(e); } });
+  // The same four jobs as the hub's jobs.js, so the hub's own video player opens them.
+  app.get('/founders/jobs.js', async (req, res, next) => { try {
+    const jobs = await newest();
+    res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send('window.STJ_JOBS = ' + JSON.stringify(jobs).replace(/</g, '\\u003c') + ';');
+  } catch (e) { next(e); } });
+  // The two founder videos (voiced, 9:16) live in founders/assets
+  app.use('/founders/media', express.static(path.join(__dirname, 'founders', 'assets'), { maxAge: '1h', index: false }));
 
   app.post('/api/founders', express.json({ limit: '5kb' }), async (req, res) => {
     const b = req.body || {};
