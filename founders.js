@@ -139,7 +139,7 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
     const when = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'short', timeStyle: 'short' });
     const blocks = areas.map(a => { const rs = rows.filter(r => r.area === a), taken = Math.min(rs.length, PLACES);
       return `<h2>${esc(a)} <small>${taken} of ${PLACES} places taken${rs.length > PLACES ? `, ${rs.length - PLACES} waiting` : ''}</small></h2>
-<div class="w"><table><thead><tr><th>Place</th><th>When</th><th>Business</th><th>Register name</th><th>Registration</th><th>Mobile</th><th>Postcode</th></tr></thead><tbody>${rs.map(r => `<tr><td>${r.position}${r.position > PLACES ? ' (waiting)' : ''}</td><td>${when(r.created_at)}</td><td>${esc(r.business)}</td><td>${esc(r.register_name)}</td><td>${esc(r.registration)}</td><td>${esc(r.mobile)}</td><td>${esc(r.postcode)}</td></tr>`).join('')}</tbody></table></div>`; }).join('');
+<div class="w"><table><thead><tr><th>Place</th><th>When</th><th>Business</th><th>Register name</th><th>Registration</th><th>Mobile</th><th>Postcode</th><th></th></tr></thead><tbody>${rs.map(r => `<tr><td>${r.position}${r.position > PLACES ? ' (waiting)' : ''}</td><td>${when(r.created_at)}</td><td>${esc(r.business)}</td><td>${esc(r.register_name)}</td><td>${esc(r.registration)}</td><td>${esc(r.mobile)}</td><td>${esc(r.postcode)}</td><td><form method="post" action="/admin/founders/delete" onsubmit="return confirm('Delete this application?')"><input type="hidden" name="id" value="${r.id}"><button type="submit">Delete</button></form></td></tr>`).join('')}</tbody></table></div>`; }).join('');
     const summary = areas.map(a => { const n = rows.filter(r => r.area === a).length; return `<tr><td>${esc(a)}</td><td>${Math.min(n, PLACES)} of ${PLACES}</td><td>${n > PLACES ? n - PLACES : ''}</td></tr>`; }).join('');
     res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Founders · admin</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}nav a{padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600}nav a.on{background:#1F2124;color:#fff}h2{margin:26px 0 8px}h2 small{font-weight:400;color:#555;font-size:15px}.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #e5e5e5}th{background:#f6f6f6}</style></head><body>
@@ -147,6 +147,13 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
 <h1>Founder applications</h1><p>${rows.length} application${rows.length === 1 ? '' : 's'} in ${areas.length} area${areas.length === 1 ? '' : 's'}.</p>
 ${rows.length ? `<h2>Places by area</h2><div class="w"><table><thead><tr><th>Area</th><th>Places taken</th><th>Waiting</th></tr></thead><tbody>${summary}</tbody></table></div>${blocks}` : '<p>No applications yet.</p>'}
 </body></html>`);
+  } catch (e) { next(e); } });
+
+  // delete one application (a test, or a mistake); the register number is free to apply again
+  app.post('/admin/founders/delete', auth, sameOrigin, express.urlencoded({ extended: false, limit: '1kb' }), async (req, res, next) => { try {
+    const id = parseInt(req.body && req.body.id, 10);
+    if (id > 0) await pool.query('DELETE FROM founders WHERE id=$1', [id]);
+    res.redirect('/admin/founders');
   } catch (e) { next(e); } });
 
   return { init, placeText };
