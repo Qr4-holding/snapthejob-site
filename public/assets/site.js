@@ -333,7 +333,7 @@
         <div class="biz"><span class="av" aria-hidden="true">${j.initials}</span>
           <div style="flex:1 1 160px;min-width:0"><div style="font-weight:700;font-size:19px"><a href="/business/${slugify(j.biz)}" style="color:inherit">${esc(j.biz)}</a></div><div class="small" style="font-size:15px">${esc(j.trade)}</div></div>
           <button class="follow" type="button" data-follow="${slugify(j.biz)}" data-follow-name="${esc(j.biz)}" aria-pressed="false">Follow</button>
-          <div class="services"><span style="background:none;font-weight:700;padding:6px 4px 6px 0">Services:</span>${j.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>
+          ${j.services.length ? `<div class="services"><span style="background:none;font-weight:700;padding:6px 4px 6px 0">Services:</span>${j.services.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
