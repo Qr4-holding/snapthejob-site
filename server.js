@@ -319,18 +319,24 @@ ${mini(shareApps, 'Shared to', r => r.detail)}
 ${mini(devices, 'Device', r => r.device)}
 </div>
 <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Day by day</summary><div class="w"><table><thead><tr><th>Day</th><th>Visitors</th><th>Page views</th><th>Watched</th><th>Shares</th><th>Quote clicks</th><th>Follows</th><th>Sign-ups</th></tr></thead><tbody>${days.map(d => `<tr><td>${d.day}</td><td>${d.visitors}</td><td>${d.views}</td><td>${d.plays}</td><td>${d.shares}</td><td>${d.quotes}</td><td>${d.follows}</td><td>${d.signups}</td></tr>`).join('')}</tbody></table></div></details>`;
-  const flash = { sent: 'Notification sent.', pw: 'Sign-in details saved. Use them next time you sign in.', pwbad: 'Not saved: the current password was wrong, the username used other characters (letters, numbers, . _ @ - only), or the new passwords did not match or were under 12 characters.', deleted: 'Deleted.' }[req.query.m] || '';
+  const flash = { hub: 'Saved. The home page has changed.', sent: 'Notification sent.', pw: 'Sign-in details saved. Use them next time you sign in.', pwbad: 'Not saved: the current password was wrong, the username used other characters (letters, numbers, . _ @ - only), or the new passwords did not match or were under 12 characters.', deleted: 'Deleted.' }[req.query.m] || '';
   const sentInfo = req.query.m === 'sent' ? ` (${esc(req.query.n || 0)} phones)` : '';
   const when = d => esc(new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London' }));
   const mtr = msgs.map(m => `<tr><td>${when(m.created_at)}</td><td>${esc(m.topic)}</td><td>${esc(m.name)}</td><td>${esc(m.email)}</td><td style="white-space:pre-wrap">${esc(m.message)}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this message?')" style="margin:0"><input type="hidden" name="what" value="message"><input type="hidden" name="id" value="${esc(m.id)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
   const count = k => rows.filter(r => r.kind === k).length;
   const tr = rows.map(r => `<tr><td>${when(r.created_at)}</td><td>${r.kind === 'trade' ? '<b>Trade</b>' : 'Customer'}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.business)}</td><td>${esc(r.trade)}</td><td>${esc(r.town)}</td><td>${esc(r.postcode)}</td><td>${esc(r.gallery)}</td><td>${esc(r.job)}</td><td>${esc(r.source_page)}</td><td><form method="post" action="/admin/delete" onsubmit="return confirm('Delete this sign-up?')" style="margin:0"><input type="hidden" name="what" value="signup"><input type="hidden" name="id" value="${esc(r.id)}"><button class="del" type="submit">Delete</button></form></td></tr>`).join('');
+  const hs = hubStats();
+  const hubBox = `<h2>Switch-over</h2><div class="card" style="max-width:640px"><p style="margin:0 0 6px"><b>Published videos: ${hs.videos} from ${hs.carriers} carriers.</b> Switch over at ${HUB_NEED.videos} from ${HUB_NEED.carriers}.</p>
+<p class="n" style="margin:0 0 10px">Setting HUB_OPEN is <b>${HUB_OPEN ? 'ON' : 'OFF'}</b>. ${HUB_OPEN ? 'The home page is the clear-ups directory; the founders page is at /founders.' : 'The home page is the founders page. The clear-ups directory, categories, search, business pages and waiting list are hidden.'}</p>
+<form method="post" action="/admin/hub" onsubmit="return confirm('${HUB_OPEN ? 'Hide the clear-ups directory again and show the founders page at /?' : 'Open the clear-ups directory as the home page?'}')" style="margin:0"><input type="hidden" name="open" value="${HUB_OPEN ? '0' : '1'}"><button type="submit">${HUB_OPEN ? 'Turn HUB_OPEN off' : 'Turn HUB_OPEN on'}</button></form></div>`;
   const opts = ['everyone', ...targets].map(t => `<option value="${esc(t)}">${t === 'everyone' ? 'Everyone who allowed alerts' : esc(nameOf(t)) + ' followers'}</option>`).join('');
   res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin · SnapTheJob</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}h1{margin:0 0 4px}h2{margin:28px 0 8px}.k{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.k div{border:1px solid #D9381E;border-radius:12px;padding:10px 16px}.k b{font-size:24px;display:block}a.b,button{display:inline-block;background:#D9381E;color:#fff;padding:10px 16px;border-radius:20px;text-decoration:none;font-weight:700;border:none;font:inherit;font-weight:700;cursor:pointer}.w{overflow-x:auto;margin-top:10px}table{border-collapse:collapse;font-size:14px;min-width:600px}th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:top}th{background:#FDF1EE}button.del{background:#fff;color:#A1260F;border:1px solid #F0B8AE;padding:6px 12px;font-size:13px}button.del:hover{background:#FDF1EE}form.card{border:1px solid #F0B8AE;border-radius:14px;padding:14px;display:grid;gap:10px;max-width:560px}label{display:grid;gap:4px;font-weight:600;font-size:14px}input,select,textarea{font:inherit;padding:10px;border:1px solid #C9CBC5;border-radius:10px}.flash{background:#FDF1EE;border:1px solid #D9381E;border-radius:12px;padding:10px 14px;font-weight:600}.n{color:#5E6168;font-size:14px}</style></head>
 <body><nav style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><a href="/admin" style="padding:8px 14px;border-radius:18px;background:#1F2124;color:#fff;text-decoration:none;font-weight:600">Overview</a><a href="/admin/jobs" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Jobs: add videos</a>${SKIN.quote ? '<a href="/admin/quotes" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Quote requests</a>' : ''}${SKIN.founders ? '<a href="/admin/founders" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">Founders</a>' : ''}${SKIN.trades ? '<a href="/admin/ai" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">AI voice</a>' : ''}<a href="/" target="_blank" rel="noopener" style="padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600">View site</a></nav><h1>SnapTheJob admin</h1>
 ${flash ? `<p class="flash">${esc(flash)}${sentInfo}</p>` : ''}
 <div class="k"><div><b>${rows.length}</b>Waiting list</div><div><b>${count('trade')}</b>Trades</div><div><b>${count('customer')}</b>Customers</div><div><b>${msgs.length}</b>Messages</div><div><b>${people.p}</b>Phones with alerts on</div><div><b>${people.e}</b>Email followers</div></div>
+
+${hubBox}
 
 ${statsHtml}
 
@@ -372,6 +378,12 @@ ${statsHtml}
 </body></html>`);
 } catch (e) { next(e); } });
 const form = express.urlencoded({ extended: false, limit: '10kb' });
+app.post('/admin/hub', auth, sameOrigin, form, async (req, res, next) => { try {
+  const on = (req.body && req.body.open) === '1';
+  await pool.query(`INSERT INTO settings (key, value) VALUES ('hub_open', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [on ? '1' : '0']);
+  HUB_OPEN = on;
+  res.redirect('/admin?m=hub');
+} catch (e) { next(e); } });
 app.post('/admin/notify', auth, sameOrigin, form, async (req, res) => {
   const target = clean(req.body.target, 60);
   if (target !== 'everyone' && !TARGET.test(target)) return res.redirect(303, '/admin');
@@ -445,19 +457,35 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 // ---------- jobs, trades and search-engine pages ----------
 let JOBS = []; // loaded from the database (see jobs-admin.js)
+// ---------- HUB_OPEN: until it is switched on in /admin, the public site is the founders page (at / and /founders), the real
+// job pages and /admin. The clear-ups directory, categories, search, business pages, waiting list and demo jobs are hidden (302 to /). ----------
+const HUB_NEED = { videos: 30, carriers: 5 };
+let HUB_OPEN = process.env.HUB_OPEN === '1';
+async function loadHub() { try { const r = await pool.query("SELECT value FROM settings WHERE key='hub_open'"); if (r.rows[0]) HUB_OPEN = r.rows[0].value === '1'; } catch (e) { console.error('hub setting', e.message); } }
+const shown = () => HUB_OPEN ? JOBS : JOBS.filter(j => !j.demo);        // the jobs the public can see
+const hubStats = () => { const r = JOBS.filter(j => !j.demo); return { videos: r.length, carriers: new Set(r.map(j => j.biz)).size }; };
+const toHome = (req, res) => res.redirect(302, '/');
+// closed: take the unfinished bits out of the shared page shell (search, waiting-list button, category links, app link)
+function gate(html) {
+  if (HUB_OPEN) return html.replace('"hubOpen":false', '"hubOpen":true');
+  return html.replace(/<form class="search"[\s\S]*?<\/form>/, '')
+    .replace(/<button class="btn" type="button" data-waitlist="trade">[^<]*<\/button>/g, '')
+    .replace(/<nav class="tradelinks"[\s\S]*?<\/nav>/, '')
+    .replace(' · <a href="/app">Get the app</a>', '');
+}
 const TRADES = SKIN.categories.map(c => c.name);
 const tradeSlug = t => slugify(t);
 const CAT = SKIN.catPath || 'trades';
 let jobsJs = 'window.STJ_JOBS = [];';
 const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN, approveJob: id => trades && trades.approve(id),
-  onChange: list => { JOBS = list; jobsJs = 'window.STJ_JOBS = ' + JSON.stringify(list).replace(/</g, '\\u003c') + ';'; } });
+  onChange: list => { JOBS = list; } });
 const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS, ORIGIN }) : null;
-const founders = SKIN.founders ? require('./founders')({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, brand: h => brand(h), getJobs: () => JOBS }) : null;
-app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send(jobsJs));
+const founders = SKIN.founders ? require('./founders')({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, brand: h => gate(brand(h)), getJobs: () => JOBS, hubOpen: () => HUB_OPEN, noindex: NOINDEX }) : null;
+app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send('window.STJ_JOBS = ' + JSON.stringify(shown()).replace(/</g, '\\u003c') + ';'));
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
 const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
-  appName: (SKIN.app || {}).shortName || SKIN.name, trades: !!SKIN.trades, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage };
+  appName: (SKIN.app || {}).shortName || SKIN.name, trades: !!SKIN.trades, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage, hubOpen: false };
 const TOKENS = {
   ID: SKIN.id, NAME: esc(SKIN.name), THEME: SKIN.theme, FONTS: SKIN.fonts, LOGO_WORD: SKIN.logoWord, DESC: esc(SKIN.desc), OG_IMAGE: SKIN.ogImage,
   SEARCH_PH: esc(SKIN.searchPlaceholder), SEARCH_LABEL: esc(SKIN.searchLabel), CHIPS_LABEL: esc(SKIN.chipsLabel), FEED_TITLE: esc(SKIN.feedTitle),
@@ -481,7 +509,7 @@ const tpl = { index: readTpl('index.html'), job: readTpl('job.html'), contact: r
 const tradeLinks = `<nav class="tradelinks" aria-label="${esc(SKIN.browseAria || 'All trades')}"><b>${esc(SKIN.browseLabel || 'Browse trades:')}</b> ` +
   TRADES.map(t => `<a href="/${CAT}/${tradeSlug(t)}">${esc(t)}</a>`).join(' · ') + '</nav>';
 function page(html, { title, desc, url, image, extra = '' }) {
-  return html
+  return gate(html
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
     .replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(title)}">`)
@@ -491,12 +519,13 @@ function page(html, { title, desc, url, image, extra = '' }) {
 <meta property="og:site_name" content="${esc(SKIN.name)}">
 <link rel="canonical" href="${ORIGIN}${url}">
 <meta name="twitter:card" content="summary_large_image">${extra}`)
-    .replace('<!--TRADE_LINKS-->', tradeLinks);
+    .replace('<!--TRADE_LINKS-->', tradeLinks));
 }
 const ld = o => `\n<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 const isoDur = d => { const [m, s] = d.split(':').map(Number); return `PT${m ? m + 'M' : ''}${s}S`; };
 
-app.get(['/', '/index.html'], (req, res) => {
+app.get(['/', '/index.html'], (req, res, next) => {
+  if (!HUB_OPEN) return req.path !== '/' || Object.keys(req.query).some(k => k === 'q' || k === 'trade') ? toHome(req, res) : founders ? founders.home(req, res, next) : toHome(req, res);
   res.set('Cache-Control', 'no-cache').send(page(tpl.index, {
     title: SKIN.homeTitle,
     desc: SKIN.homeDesc,
@@ -506,8 +535,8 @@ app.get(['/', '/index.html'], (req, res) => {
 });
 // Business profile: /business/<slug> shows one business's videos with a Get a quote button on each
 app.get('/business/:slug', (req, res, next) => {
-  const mine = JOBS.filter(j => slugify(j.biz) === req.params.slug);
-  if (!mine.length) return next();
+  const mine = shown().filter(j => slugify(j.biz) === req.params.slug);
+  if (!mine.length) return HUB_OPEN ? next() : toHome(req, res);
   const b = mine[0], n = mine.length;
   const svc = [...new Set(mine.flatMap(j => j.services && j.services.length ? j.services : [j.trade]))].slice(0, 6);
   const head = `<section class="profile" aria-label="${esc(b.biz)}"><span class="av" aria-hidden="true">${esc(b.initials)}</span><div class="pbody"><h1 class="disp">${esc(b.biz)}</h1><p class="small">${n} before and after video${n === 1 ? '' : 's'} · ${esc(svc.join(' · '))}</p></div><button class="btn btn-red" type="button" data-waitlist="customer" data-biz="${esc(b.biz)}">Get a quote from ${esc(b.biz)}</button></section>`;
@@ -519,7 +548,8 @@ app.get('/business/:slug', (req, res, next) => {
   res.set('Cache-Control', 'no-cache').send(html);
 });
 const fill = (s, t) => s.replace('{cat}', t).replace('{cat_lc}', t.toLowerCase());
-app.get(`/${CAT}/:t`, (req, res, next) => {
+app.get([`/${CAT}`, `/${CAT}/:t`], (req, res, next) => {
+  if (!HUB_OPEN) return toHome(req, res);
   const t = TRADES.find(x => tradeSlug(x) === req.params.t);
   if (!t) return next();
   const n = JOBS.filter(j => j.trade === t).length;
@@ -530,12 +560,12 @@ app.get(`/${CAT}/:t`, (req, res, next) => {
   }));
 });
 app.get(['/job', '/job.html'], (req, res) => {
-  const j = JOBS.find(x => x.slug === req.query.j);
-  res.redirect(301, j ? `/job/${j.slug}` : '/');
+  const j = shown().find(x => x.slug === req.query.j);
+  res.redirect(HUB_OPEN ? 301 : 302, j ? `/job/${j.slug}` : '/');
 });
 app.get('/job/:slug', (req, res, next) => {
-  const j = JOBS.find(x => x.slug === req.params.slug);
-  if (!j) return next();
+  const j = shown().find(x => x.slug === req.params.slug);
+  if (!j) return HUB_OPEN ? next() : toHome(req, res);
   const title = `${j.title} by ${j.biz} · ${SKIN.name}`;
   const desc = j.description || `Before and after video by ${j.biz}, ${j.trade}. Watch it on ${SKIN.name}.`;
   res.set('Cache-Control', 'no-cache').send(page(tpl.job, {
@@ -551,10 +581,11 @@ app.get('/job/:slug', (req, res, next) => {
 });
 app.get('/robots.txt', (req, res) => NOINDEX ? res.type('text/plain').send('User-agent: *\nDisallow: /\n') : res.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nDisallow: /signature\nDisallow: /trade\n\nSitemap: ${ORIGIN}/sitemap.xml\n`));
 app.get('/sitemap.xml', (req, res) => {
-  const urls = ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), ...[...new Set(JOBS.map(j => slugify(j.biz)))].map(b => `/business/${b}`), '/app', '/contact', '/privacy'];
+  const urls = HUB_OPEN ? ['/', ...TRADES.map(t => `/${CAT}/${tradeSlug(t)}`), ...JOBS.map(j => `/job/${j.slug}`), ...[...new Set(JOBS.map(j => slugify(j.biz)))].map(b => `/business/${b}`), '/app', '/contact', '/privacy']
+    : ['/', ...shown().map(j => `/job/${j.slug}`)]; // closed: the home page and the real job pages only
   const vid = j => `<video:video><video:thumbnail_loc>${ORIGIN}${j.cover}</video:thumbnail_loc><video:title>${esc(j.title + ' by ' + j.biz)}</video:title><video:description>${esc(j.description || j.title)}</video:description><video:content_loc>${ORIGIN}${j.playVideo || j.video}</video:content_loc><video:publication_date>${j.date}</video:publication_date></video:video>`;
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n` +
-    urls.map(u => { const j = JOBS.find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
+    urls.map(u => { const j = shown().find(x => u === `/job/${x.slug}`); return `<url><loc>${ORIGIN}${u}</loc>${j ? vid(j) : ''}</url>`; }).join('\n') + '\n</urlset>\n');
 });
 
 // ---------- trades / waste carriers: sign in, post a job from photos, my jobs ----------
@@ -569,6 +600,7 @@ app.get(['/privacy', '/privacy.html'], sendPage('privacy'));
 const qrCache = new Map();
 app.get(['/app', '/get-the-app', '/app.html'], async (req, res, next) => {
   try {
+    if (!HUB_OPEN) return toHome(req, res);
     if (req.path !== '/app') return res.redirect(301, '/app');
     const host = /^[a-z0-9.-]+$/i.test(req.hostname || '') && req.hostname !== 'localhost' ? `https://${req.hostname}` : ORIGIN;
     if (qrCache.size > 20) qrCache.clear();
@@ -603,11 +635,12 @@ app.use('/media', express.static(path.join(SKIN_PUBLIC, 'media'), { maxAge: '7d'
 app.use('/media', express.static(path.join(__dirname, 'public/media'), { maxAge: '7d' }));
 app.use(express.static(SKIN_PUBLIC, { extensions: [], index: false, maxAge: '1m' }));
 app.use(express.static(path.join(__dirname, 'public'), { extensions: SKIN.id === 'snapthejob' ? ['html'] : [], index: false, maxAge: '1m' }));
-app.use((req, res) => res.status(404).send(page(tpl.index, { title: SKIN.homeTitle, desc: SKIN.homeDesc, url: '/' })));
+app.use((req, res) => !HUB_OPEN ? (req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(req.path) ? toHome(req, res) : res.status(404).type('text/plain').send('Not found')) : res.status(404).send(page(tpl.index, { title: SKIN.homeTitle, desc: SKIN.homeDesc, url: '/' })));
 
 process.on('unhandledRejection', e => console.error('Unhandled:', e && e.message));
 app.use((err, req, res, next) => { console.error(err); res.status(500).send('Something went wrong. Please try again.'); });
 initDb().then(async () => {
+  await loadHub();
   await jobsAdmin.init();
   if (trades) await trades.init();
   await jobsAdmin.reload();

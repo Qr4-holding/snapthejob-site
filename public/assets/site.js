@@ -23,6 +23,7 @@
   const SHARE = 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13';
 
   const JOBS = window.STJ_JOBS || [];
+  const OPEN = !!SITE.hubOpen; // false until the clear-ups directory is switched on: no category links, waiting list, placeholders or app prompts
 
   const $ = (s, el = document) => el.querySelector(s);
   const track = (t, extra = {}) => {
@@ -325,7 +326,7 @@
     jobEl.innerHTML = `
       <div class="player"><video src="${j.video}" poster="${j.cover}" controls playsinline preload="metadata" aria-label="${esc(j.alt)}"></video></div>
       <div class="info">
-        <div class="crumb"><a href="/">${esc(C.crumbRoot)}</a> › <a href="/${CAT}/${slugify(j.trade)}">${esc(j.trade)}</a> › ${esc(j.title)}</div>
+        <div class="crumb"><a href="/">${esc(C.crumbRoot)}</a> › ${OPEN ? `<a href="/${CAT}/${slugify(j.trade)}">${esc(j.trade)}</a>` : esc(j.trade)} › ${esc(j.title)}</div>
         <h1 class="disp">${esc(j.title)}</h1>
         <div class="tags">${j.stages.map(s => `<span class="tag ${tagClass[s]}">${s}</span>`).join('')}
           <span class="small" style="font-weight:600">${j.stages.length} photos · ${j.dur.replace('0:', '')} seconds${j.voice ? ' · AI voice' : ''}${j.demo ? ' · Demo' : ''}</span></div>
@@ -337,10 +338,13 @@
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
         <button class="btn bigshare disp" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
-        <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. ${esc(NAME)} hosts this video; it does not check or vouch for the work. Demo video shown while we launch.</p>
+        <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. ${esc(NAME)} hosts this video; it does not check or vouch for the work.${j.demo ? ' Demo video shown while we launch.' : ''}</p>
       </div>`;
     const more = $('#more');
-    if (more) more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + (SITE.moreSoon || []).map(soon).join('');
+    if (more) {
+      more.innerHTML = JOBS.filter(x => x !== j).map(card).join('') + (OPEN ? (SITE.moreSoon || []).map(soon).join('') : '');
+      if (!more.children.length && more.parentElement) more.parentElement.hidden = true;
+    }
   }
 
   // ---------- full-screen player, laid out like Shorts ----------
@@ -353,9 +357,9 @@
   <nav class="vw-side" aria-label="Browse">
     <a href="/">${svg('M3 11l9-7 9 7v9H3z', 22)}Home</a>
     <button type="button" data-waitlist="customer">${svg('M4 5h16v11H8l-4 4z', 22)}${esc(C.sideQuote)}</button>
-    <button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}${esc(C.sideTrade)}</button>
+    ${OPEN ? `<button type="button" data-waitlist="trade">${svg('M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z', 22)}${esc(C.sideTrade)}</button>
     <div class="vw-side-h">${esc(C.sideHead)}</div>
-    ${TRADES.map(t => `<a href="/${CAT}/${slugify(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}
+    ${TRADES.map(t => `<a href="/${CAT}/${slugify(t)}">${svg(ICON[t], 20)}${esc(t)}</a>`).join('')}` : ''}
   </nav>
   <div class="vw-main">
     <div class="vw-stage" id="vwStage">
@@ -615,7 +619,7 @@
   paintApp();
 
   const appBar = () => {
-    if (appPage || standalone() || !/Mobi|Android|iPhone/i.test(ua) || document.querySelector('.appbar')) return;
+    if (!OPEN || appPage || standalone() || !/Mobi|Android|iPhone/i.test(ua) || document.querySelector('.appbar')) return;
     const off = +store.get('app-bar-off') || 0;
     if (Date.now() - off < 30 * 864e5) return;
     const n = (+store.get('app-visits') || 0) + 1; store.set('app-visits', n);

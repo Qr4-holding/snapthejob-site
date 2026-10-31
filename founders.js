@@ -30,7 +30,7 @@ function registration(raw) {
   return { ok: true, number: n };
 }
 
-module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, fetchImpl, brand, getJobs }) {
+module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, fetchImpl, brand, getJobs, hubOpen, noindex }) {
   const clean = (v, max = 200) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, max) : '');
   const lookup = number => ea.lookup(number, fetchImpl ? { fetchImpl } : {});
   const TO = process.env.FOUNDERS_EMAIL || 'hello@cleanuppic.co.uk';
@@ -78,12 +78,17 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
     </article>`;
 
   // The page is the hub's own shell (fonts, site.css, skin.css, header, quote flow), so it is the same site.
-  app.get('/founders', async (req, res, next) => { try {
+  // Until the hub is opened it is the home page (/) and /founders points to / as its canonical address; once open it stays at /founders.
+  const serve = canonical => async (req, res, next) => { try {
     const jobs = await newest();
-    let html = fs.readFileSync(PAGE, 'utf8').replace('{{CLEARUPS}}', jobs.map(card).join('\n'));
+    const url = ORIGIN + canonical;
+    const head = `<link rel="canonical" href="${url}">\n<meta property="og:title" content="CleanUpPic · more leads from the jobs you already do">\n<meta property="og:description" content="A finished, speaking video of every job you do, with a Get a quote button. Founder places for upper-tier registered waste carriers.">\n<meta property="og:image" content="${ORIGIN}/founders/real-job.jpg">\n<meta property="og:url" content="${url}">\n<meta property="og:type" content="website">`;
+    let html = fs.readFileSync(PAGE, 'utf8').replace('{{CLEARUPS}}', jobs.map(card).join('\n')).replace('{{CANON}}', head).replace('{{ROBOTS}}', noindex ? '<meta name="robots" content="noindex,nofollow">' : '');
     if (brand) html = brand(html);
-    res.set({ 'Cache-Control': 'no-cache', 'X-Robots-Tag': 'noindex, nofollow' }).type('html').send(html);
-  } catch (e) { next(e); } });
+    res.set({ 'Cache-Control': 'no-cache' }).type('html').send(html);
+  } catch (e) { next(e); } };
+  app.get('/founders', (req, res, next) => serve(hubOpen && hubOpen() ? '/founders' : '/')(req, res, next));
+  const home = serve('/');
   // The same four jobs as the hub's jobs.js, so the hub's own video player opens them.
   app.get('/founders/jobs.js', async (req, res, next) => { try {
     const jobs = await newest();
@@ -156,6 +161,6 @@ ${rows.length ? `<h2>Places by area</h2><div class="w"><table><thead><tr><th>Are
     res.redirect('/admin/founders');
   } catch (e) { next(e); } });
 
-  return { init, placeText };
+  return { init, placeText, home };
 };
 module.exports.postcode = postcode; module.exports.mobile = mobile; module.exports.registration = registration; module.exports.PLACES = PLACES;

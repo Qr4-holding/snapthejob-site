@@ -26,6 +26,9 @@ Per skin: `skin.json` → optional `"app": { "name", "shortName", "benefits": [.
 `/trade` sign in or create account (cookie on their phone, 180 days). `/trade/jobs`: Post a job (before, optional during, after photos from camera or gallery) and My jobs.
 Photos are re-encoded (hidden data such as location dropped) and rendered by `video/engine.py` (python3 + Pillow in the container) into the social and site videos with the skin's `video` brand block. New jobs wait for approval in `/admin/jobs` (Approve = live + follower alert; Reject = delete). A signed-in carrier's home page shows "Post a job" in place of the customer button.
 
+## Home page gate (HUB_OPEN)
+Until `HUB_OPEN` is turned on in /admin (Switch-over box; env `HUB_OPEN=1` is only the default), `/` and `/founders` show the founders page. Hidden with a 302 to `/`: the clear-ups directory, `/waste/*`, search (`?q=`), `/app`, business pages without a real job, demo jobs (`demo` flag), unknown URLs. Kept: real `/job/<slug>` pages, `/contact`, `/privacy`, `/trade*`, `/admin`, the quote flow. `sitemap.xml` lists `/` and real job pages only. `site.js` reads `SITE.hubOpen` so the player, job page and install prompt follow the same switch. Open: `/` is the directory again and `/founders` stays.
+
 ## Founders page (`"founders": true` in the skin; cleanuppic only)
 `/founders` (noindex until approved): the founder-places sales page, built from `founders/page.html` (approved mock: `founders/mock.html`).
 - Page: the hub's own shell (hub fonts, site.css/skin.css, header, footer, quote flow, video player). Videos: `founders/assets/real-job-fence-ekp11.mp4` (hero) and `what-your-phone-does.mp4`, served at `/founders/media/`; posters in `public/founders/`. "Latest clear-ups" are the four newest jobs from the hub's job list, or from `FOUNDERS_FEED_URL` (e.g. `https://cleanuppic.co.uk/assets/jobs.js`) on a preview with its own empty database.
