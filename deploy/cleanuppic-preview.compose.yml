@@ -1,0 +1,51 @@
+# Preview of the founders page (Hostinger Docker project "cleanuppic-preview"): its own database, its own host, clones the founders-page branch.
+# Project environment (server only): DB_PASSWORD, ADMIN_PASSWORD, BREVO_SMTP_LOGIN, BREVO_SMTP_KEY, MAIL_FROM,
+#   QUOTE_EMAIL and FOUNDERS_EMAIL (test mail goes here, not to the operator), PREVIEW_HOST=preview.cleanuppic.co.uk, BRANCH=founders-page
+# Updating: push to the branch, then restart the project (the web container clones the branch on start).
+services:
+  web:
+    image: node:22-alpine
+    command: ["sh", "-c", "apk add --no-cache git ffmpeg python3 py3-pillow >/dev/null && rm -rf /app && git clone --depth 1 --branch ${BRANCH} https://github.com/Qr4-holding/snapthejob-site.git /app && cd /app && npm install --omit=dev --no-audit --no-fund && exec node server.js"]
+    environment:
+      - NODE_ENV=production
+      - SKIN=cleanuppic
+      - NOINDEX=1
+      - DATABASE_URL=postgres://cus:${DB_PASSWORD}@db:5432/cus
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - BREVO_SMTP_LOGIN=${BREVO_SMTP_LOGIN}
+      - BREVO_SMTP_KEY=${BREVO_SMTP_KEY}
+      - MAIL_FROM=${MAIL_FROM}
+      - QUOTE_EMAIL=${QUOTE_EMAIL}
+      - FOUNDERS_EMAIL=${FOUNDERS_EMAIL}
+      - FOUNDERS_FEED_URL=https://cleanuppic.co.uk/assets/jobs.js
+      - CANONICAL=https://${PREVIEW_HOST}
+    volumes:
+      - quotes:/data/quotes
+    labels:
+      caddy: ${PREVIEW_HOST}
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+    networks:
+      - web
+      - internal
+    depends_on:
+      - db
+    restart: unless-stopped
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=cus
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=cus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    restart: unless-stopped
+networks:
+  web:
+    external: true
+  internal: {}
+volumes:
+  pgdata: {}
+  quotes: {}
