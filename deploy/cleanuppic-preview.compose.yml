@@ -19,7 +19,7 @@ services:
       - QUOTE_EMAIL=${QUOTE_EMAIL}
       - FOUNDERS_EMAIL=${FOUNDERS_EMAIL}
       - FOUNDERS_FEED_URL=https://cleanuppic.co.uk/assets/jobs.js
-      - CANONICAL=https://${PREVIEW_HOST}
+      - ORIGIN=https://${PREVIEW_HOST}
     volumes:
       - quotes:/data/quotes
     labels:
