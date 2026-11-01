@@ -526,6 +526,7 @@ const isoDur = d => { const [m, s] = d.split(':').map(Number); return `PT${m ? m
 
 app.get(['/', '/index.html'], (req, res, next) => {
   if (!HUB_OPEN) return req.path !== '/' || Object.keys(req.query).some(k => k === 'q' || k === 'trade') ? toHome(req, res) : founders ? founders.home(req, res, next) : toHome(req, res);
+  if (req.path === '/' && typeof req.query.ref === 'string' && founders) return res.redirect(302, '/founders?ref=' + encodeURIComponent(req.query.ref.slice(0, 12)));
   res.set('Cache-Control', 'no-cache').send(page(tpl.index, {
     title: SKIN.homeTitle,
     desc: SKIN.homeDesc,
