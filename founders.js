@@ -1,6 +1,7 @@
 // CleanUpPic founder places: the /founders page, the application form (checked against the Environment Agency register),
 // the founders table, an email to the team, and the admin list. Only switched on for skins with "founders": true.
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const ea = require('./ea');
 const mail = require('./mail');
@@ -21,6 +22,22 @@ function mobile(raw) {
   if (s.startsWith('+44')) s = '0' + s.slice(3); else if (s.startsWith('0044')) s = '0' + s.slice(4);
   return /^07\d{9}$/.test(s) ? s.slice(0, 5) + ' ' + s.slice(5) : null;
 }
+// the person's name: at least two characters, with a letter in it
+function personName(raw) {
+  const n = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  return n.length >= 2 && /\p{L}/u.test(n) ? n : null;
+}
+// an email address, lower-cased
+function emailOf(raw) {
+  const e = String(raw || '').trim().toLowerCase().slice(0, 120);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : null;
+}
+// the wording of the consent tick box: stored with the application, and shown on the page exactly like this
+const CONSENT_TEXT = 'Text and email me about my founder place.';
+// a short share code (no look-alike letters or numbers)
+const REF_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+const newRef = () => Array.from(crypto.randomBytes(6), b => REF_CHARS[b % REF_CHARS.length]).join('');
+const REF_OK = /^[a-z0-9]{4,12}$/;
 // what the person typed as the carrier registration: { ok, number } or { ok:false, error }
 function registration(raw) {
   const n = ea.normNumber(raw);
@@ -40,6 +57,9 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
       id SERIAL PRIMARY KEY, postcode TEXT NOT NULL, area TEXT NOT NULL, business TEXT NOT NULL, mobile TEXT NOT NULL,
       registration TEXT NOT NULL UNIQUE, register_name TEXT NOT NULL DEFAULT '', tier TEXT NOT NULL DEFAULT '', register_expiry TEXT NOT NULL DEFAULT '',
       position INT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
+    for (const c of ["name TEXT NOT NULL DEFAULT ''", "email TEXT NOT NULL DEFAULT ''", 'support_cleanupuk BOOLEAN NOT NULL DEFAULT false', 'crew BOOLEAN NOT NULL DEFAULT false',
+      "consent_text TEXT NOT NULL DEFAULT ''", 'consent_at TIMESTAMPTZ', 'ref TEXT', 'referred_by TEXT']) await pool.query('ALTER TABLE founders ADD COLUMN IF NOT EXISTS ' + c);
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS founders_ref ON founders (ref)');
     await pool.query('CREATE INDEX IF NOT EXISTS founders_area ON founders (area, position)');
   }
 
@@ -102,11 +122,17 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
     const fail = (error, field, status = 400) => res.status(status).json({ ok: false, error, field });
     if (b.website) return res.json({ ok: true, message: 'Thank you.' });                     // honeypot: bots fill this
     if (limited(req.ip)) return fail('Too many tries from this connection. Please try again in an hour.', undefined, 429);
-    const pc = postcode(b.postcode), business = clean(b.business, 120), mob = mobile(b.mobile), reg = registration(b.registration);
-    if (!pc) return fail("That postcode doesn't look right. Use your business postcode, like LS1 1UR.", 'postcode');
+    const nm = personName(b.name), business = clean(b.business, 120), mob = mobile(b.mobile), em = emailOf(b.email), reg = registration(b.registration), pc = postcode(b.postcode);
+    if (!nm) return fail('Add your name.', 'name');
     if (business.length < 2) return fail('Add your business name.', 'business');
     if (!mob) return fail('That mobile number doesn\'t look right. A UK mobile starts 07 and has 11 numbers, like 07123 456789.', 'mobile');
+    if (!em) return fail("That email address doesn't look right. Check it and try again.", 'email');
     if (!reg.ok) return fail(reg.error, 'registration');
+    if (!pc) return fail("That postcode doesn't look right. Use your business postcode, like LS1 1UR.", 'postcode');
+    if (b.support !== true) return fail('Please tick "I support Clean Up UK" to carry on.', 'support');
+    if (b.consent !== true) return fail('Please tick the last box, so we can text and email you about your place.', 'consent');
+    const crew = b.crew === true;
+    const refIn = typeof b.ref === 'string' && REF_OK.test(b.ref.trim().toLowerCase()) ? b.ref.trim().toLowerCase() : '';
     // is it on the register?
     const r = await lookup(reg.number);
     if (r.status === 'notfound') return fail("We can't find that number on the Environment Agency register, so we haven't saved anything. Check it and try again.", 'registration');
@@ -121,20 +147,31 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
       await db.query('BEGIN');
       await db.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['founders:' + pc.area]);
       const had = (await db.query('SELECT * FROM founders WHERE registration=$1', [reg.number])).rows[0];
-      if (had) { row = had; again = true; }
-      else {
+      if (had) {
+        row = had; again = true;
+        if (!row.ref) row = (await db.query('UPDATE founders SET ref=$1 WHERE id=$2 RETURNING *', [newRef(), row.id])).rows[0];
+      } else {
         const pos = (await db.query('SELECT COALESCE(MAX(position),0)+1 AS p FROM founders WHERE area=$1', [pc.area])).rows[0].p;
-        row = (await db.query(`INSERT INTO founders (postcode,area,business,mobile,registration,register_name,tier,register_expiry,position) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-          [pc.full, pc.area, business, mob, reg.number, r.name || '', r.tier, r.expiry || '', pos])).rows[0];
+        const by = refIn ? (await db.query('SELECT ref FROM founders WHERE ref=$1', [refIn])).rows[0] : null;   // only a real code counts
+        for (let i = 0; ; i++) {
+          try {
+            await db.query('SAVEPOINT ins');
+            row = (await db.query(`INSERT INTO founders (postcode,area,business,mobile,registration,register_name,tier,register_expiry,position,name,email,support_cleanupuk,crew,consent_text,consent_at,ref,referred_by)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,now(),$14,$15) RETURNING *`,
+              [pc.full, pc.area, business, mob, reg.number, r.name || '', r.tier, r.expiry || '', pos, nm, em, crew, CONSENT_TEXT, newRef(), by ? by.ref : null])).rows[0];
+            break;
+          } catch (e) { await db.query('ROLLBACK TO SAVEPOINT ins'); if (!/founders_ref/.test(e.message) || i > 5) throw e; }  // share code clash: try another
+        }
       }
       await db.query('COMMIT');
     } catch (e) { await db.query('ROLLBACK').catch(() => {}); console.error('founders save failed', e.message); return fail('Something went wrong on our side, and nothing was saved. Please try again.', undefined, 500); }
     finally { db.release(); }
     if (!again) {
-      const text = `New founder application\n\nBusiness: ${row.business}\nRegister name: ${row.register_name}\nRegistration: ${row.registration} (${row.tier} tier, expires ${row.register_expiry})\nMobile: ${row.mobile}\nPostcode: ${row.postcode}\nArea: ${row.area}\nPlace: ${row.position} of ${PLACES}${row.position > PLACES ? ' (waiting list)' : ''}\n\nAll applications: ${ORIGIN}/admin/founders`;
+      const by = row.referred_by ? (await pool.query('SELECT name, business FROM founders WHERE ref=$1', [row.referred_by]).catch(() => ({ rows: [] }))).rows[0] : null;
+      const text = `New founder application\n\nName: ${row.name}\nBusiness: ${row.business}\nMobile: ${row.mobile}\nEmail: ${row.email}\nRegister name: ${row.register_name}\nRegistration: ${row.registration} (${row.tier} tier, expires ${row.register_expiry})\nPostcode: ${row.postcode}\nArea: ${row.area}\nPlace: ${row.position} of ${PLACES}${row.position > PLACES ? ' (waiting list)' : ''}\n\nSupports Clean Up UK: yes\nClean Up Crew: ${row.crew ? 'YES, add to the Crew' : 'no'}\nConsent to text and email: yes (${new Date(row.consent_at).toISOString()}): "${row.consent_text}"\nReferred by: ${by ? by.name + ', ' + by.business + ' (' + row.referred_by + ')' : 'nobody'}\nShare code: ${row.ref}\n\nAll applications: ${ORIGIN}/admin/founders`;
       mail.send({ to: TO, subject: `Founder application: ${row.business} (${row.area}, place ${row.position})`, text }).catch(() => {});
     }
-    res.json({ ok: true, position: row.position, area: row.area, message: (again ? 'You have already applied. ' : '') + placeText(row.area, row.position) });
+    res.json({ ok: true, position: row.position, area: row.area, ref: row.ref, link: ORIGIN + '/?ref=' + row.ref, message: (again ? 'You have already applied. ' : '') + placeText(row.area, row.position) });
   });
 
   // ---------- admin: applications by area, with the count per area ----------
@@ -142,9 +179,12 @@ module.exports = function setupFounders({ app, pool, auth, sameOrigin, esc, SKIN
     const rows = (await pool.query('SELECT * FROM founders ORDER BY area, position')).rows;
     const areas = [...new Set(rows.map(r => r.area))];
     const when = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'short', timeStyle: 'short' });
-    const blocks = areas.map(a => { const rs = rows.filter(r => r.area === a), taken = Math.min(rs.length, PLACES);
+    // "Order" puts people who brought other carriers higher up their area's list: joined place minus the carriers who joined with their link
+    const nRef = r => rows.filter(x => x.referred_by && x.referred_by === r.ref).length;
+    const who = code => { const x = rows.find(y => y.ref === code); return x ? `${esc(x.name || x.business)} (${esc(code)})` : ''; };
+    const blocks = areas.map(a => { const rs = rows.filter(r => r.area === a).sort((x, y) => (x.position - nRef(x)) - (y.position - nRef(y)) || x.position - y.position), taken = Math.min(rs.length, PLACES);
       return `<h2>${esc(a)} <small>${taken} of ${PLACES} places taken${rs.length > PLACES ? `, ${rs.length - PLACES} waiting` : ''}</small></h2>
-<div class="w"><table><thead><tr><th>Place</th><th>When</th><th>Business</th><th>Register name</th><th>Registration</th><th>Mobile</th><th>Postcode</th><th></th></tr></thead><tbody>${rs.map(r => `<tr><td>${r.position}${r.position > PLACES ? ' (waiting)' : ''}</td><td>${when(r.created_at)}</td><td>${esc(r.business)}</td><td>${esc(r.register_name)}</td><td>${esc(r.registration)}</td><td>${esc(r.mobile)}</td><td>${esc(r.postcode)}</td><td><form method="post" action="/admin/founders/delete" onsubmit="return confirm('Delete this application?')"><input type="hidden" name="id" value="${r.id}"><button type="submit">Delete</button></form></td></tr>`).join('')}</tbody></table></div>`; }).join('');
+<div class="w"><table style="min-width:1100px"><thead><tr><th>Order</th><th>Joined as</th><th>When</th><th>Name</th><th>Business</th><th>Mobile</th><th>Email</th><th>Registration</th><th>Register name</th><th>Postcode</th><th>Clean Up Crew</th><th>Referred by</th><th>Brought in</th><th>Texts OK</th><th></th></tr></thead><tbody>${rs.map((r, i) => `<tr><td>${i + 1}${i + 1 > PLACES ? ' (waiting)' : ''}</td><td>${r.position}</td><td>${when(r.created_at)}</td><td>${esc(r.name)}</td><td>${esc(r.business)}</td><td>${esc(r.mobile)}</td><td>${esc(r.email)}</td><td>${esc(r.registration)}</td><td>${esc(r.register_name)}</td><td>${esc(r.postcode)}</td><td>${r.crew ? '<b>Yes</b>' : ''}</td><td>${who(r.referred_by)}</td><td>${nRef(r) || ''}</td><td>${r.consent_at ? when(r.consent_at) : ''}</td><td><form method="post" action="/admin/founders/delete" onsubmit="return confirm('Delete this application?')"><input type="hidden" name="id" value="${r.id}"><button type="submit">Delete</button></form></td></tr>`).join('')}</tbody></table></div>`; }).join('');
     const summary = areas.map(a => { const n = rows.filter(r => r.area === a).length; return `<tr><td>${esc(a)}</td><td>${Math.min(n, PLACES)} of ${PLACES}</td><td>${n > PLACES ? n - PLACES : ''}</td></tr>`; }).join('');
     res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Founders · admin</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:16px;color:#1F2124;background:#fff;max-width:1200px}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}nav a{padding:8px 14px;border-radius:18px;border:1px solid #F0B8AE;color:#1F2124;text-decoration:none;font-weight:600}nav a.on{background:#1F2124;color:#fff}h2{margin:26px 0 8px}h2 small{font-weight:400;color:#555;font-size:15px}.w{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #e5e5e5}th{background:#f6f6f6}</style></head><body>
@@ -163,4 +203,4 @@ ${rows.length ? `<h2>Places by area</h2><div class="w"><table><thead><tr><th>Are
 
   return { init, placeText, home };
 };
-module.exports.postcode = postcode; module.exports.mobile = mobile; module.exports.registration = registration; module.exports.PLACES = PLACES;
+module.exports.postcode = postcode; module.exports.mobile = mobile; module.exports.registration = registration; module.exports.PLACES = PLACES; module.exports.personName = personName; module.exports.emailOf = emailOf; module.exports.CONSENT_TEXT = CONSENT_TEXT;

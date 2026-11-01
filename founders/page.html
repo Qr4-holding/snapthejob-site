@@ -79,6 +79,17 @@
 .fp-err.on{display:block}
 .fp-ok{display:none;font-size:18px;font-weight:600;margin:6px 0 0}
 .fp-ok.on{display:block}
+.fp-tick{margin:16px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--soft)}
+.fp-tick[data-bad]{border-color:#A1260F;box-shadow:0 0 0 2px rgba(161,38,15,.2)}
+.fp-card label.fp-tl{display:flex;gap:12px;align-items:flex-start;margin:0;font-size:16px;cursor:pointer}
+.fp-card .fp-tl input{width:24px;height:24px;flex:none;margin:1px 0 0;accent-color:var(--red);border-radius:6px}
+.fp-mean{margin:8px 0 0 36px;font-size:14px;line-height:1.45;color:var(--muted)}
+.fp-share{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--soft);display:none}
+.fp-share.on{display:block}
+.fp-share p{margin:0 0 10px;font-size:15px}
+.fp-share .row{display:flex;gap:8px}
+.fp-share input{flex:1;min-width:0;height:46px;font-size:15px}
+.fp-share .btn{min-height:46px;width:auto;margin:0;padding:0 18px;flex:none}
 .fp-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 
 /* questions */
@@ -177,7 +188,7 @@
       <tr><td>Clean Up Crew: clear a fly-tip, get customers sent your way</td><td>free</td></tr>
       <tr class="you"><td>You pay</td><td><s>£200</s> £49<small>/month</small></td></tr>
     </table>
-    <div class="fp-safe"><div><b>£0 till it works</b>First price request starts the clock</div><div><b>90-day refund</b>No requests, money back</div><div><b>Price locked</b>£49 for 24 months</div></div>
+    <div class="fp-safe"><div><b>£0 till it works</b>First price request starts the clock</div><div><b>90-day refund</b>No requests, money back</div><div><b>Price locked</b>£49 locked for 12 months</div></div>
     <a class="btn btn-red btn-lg" href="#apply">Claim my founder place</a>
     <details><summary>Founder conditions</summary><p>Upper-tier registered carriers in England. Ten founder places per council area. Founders keep their place by logging four jobs a month.</p></details>
   </div>
@@ -195,14 +206,23 @@
     <p class="notice">Takes a minute. No card. We text you when your place is confirmed.</p>
     <form id="apply-form" novalidate>
       <div class="fp-hp" aria-hidden="true"><label>Leave this empty<input name="website" tabindex="-1" autocomplete="off"></label></div>
-      <label for="postcode">Business postcode</label><input id="postcode" name="postcode" placeholder="e.g. LS1 1UR" autocomplete="postal-code">
+      <label for="fname">Your name</label><input id="fname" name="name" autocomplete="name">
       <label for="business">Business name</label><input id="business" name="business" autocomplete="organization">
       <label for="mobile">Mobile</label><input id="mobile" name="mobile" type="tel" inputmode="tel" autocomplete="tel" placeholder="07…">
+      <label for="email">Email</label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none">
       <label for="reg">Carrier registration</label><input id="reg" name="registration" placeholder="CBDU123456" autocapitalize="characters">
+      <label for="postcode">Business postcode</label><input id="postcode" name="postcode" placeholder="e.g. LS1 1UR" autocomplete="postal-code">
+      <div class="fp-tick" id="tick-support"><label class="fp-tl"><input type="checkbox" id="support" name="support"><span>I support Clean Up UK</span></label>
+        <p class="fp-mean"><b>What that means:</b> I'm a registered waste carrier and keep my registration current. Every load goes to a licensed site and I keep the ticket. I log every job in the app. I don't fly-tip, and I report it when I see it. If fly-tipping is proven against me, I'm off Clean Up UK and off the app.</p></div>
+      <div class="fp-tick"><label class="fp-tl"><input type="checkbox" id="crew" name="crew"><span>Add me to the Clean Up Crew</span></label>
+        <p class="fp-mean">Clear up to one fly-tip a month in your area when we ask. You're paid in free quote requests from customers near you, and you go to the front of the queue in that area for 30 days after each clearance.</p></div>
+      <div class="fp-tick" id="tick-consent"><label class="fp-tl"><input type="checkbox" id="consent" name="consent"><span>Text and email me about my founder place.</span></label></div>
       <p class="fp-err" id="err" role="alert"></p>
       <button class="btn btn-red btn-lg" type="submit">Claim my founder place</button>
     </form>
     <p class="fp-ok" id="success" role="status"></p>
+    <div class="fp-share" id="share"><p><b>Know another registered carrier? Send them this.</b> When they join, you move up the list.</p>
+      <div class="row"><input id="share-link" readonly aria-label="Your share link"><button class="btn btn-red" type="button" id="share-btn">Copy link</button></div></div>
     <p class="fp-conds">Upper-tier registered carriers in England. Ten founder places per council area. Founders keep their place by logging four jobs a month.</p>
   </div>
 </div></section>
@@ -242,14 +262,21 @@ if(!st||!('IntersectionObserver' in window))return;var a=true,b=false;
 var u=function(){st.style.visibility=(!a&&!b)?'visible':'hidden'};
 new IntersectionObserver(function(e){a=e[0].isIntersecting;u()}).observe(hb);
 new IntersectionObserver(function(e){b=e[0].isIntersecting;u()}).observe(card);u()})();
+// A friend's share link (/?ref=code): remember the code on this phone and send it with the application.
+var REF='';try{var q=new URLSearchParams(location.search).get('ref');if(q&&/^[a-z0-9]{4,12}$/i.test(q)){localStorage.setItem('fp-ref',q.toLowerCase())}REF=localStorage.getItem('fp-ref')||''}catch(e){var m=/[?&]ref=([a-z0-9]{4,12})/i.exec(location.search);REF=m?m[1].toLowerCase():''}
 // The form.
-(function(){var f=document.getElementById('apply-form'),err=document.getElementById('err'),ok=document.getElementById('success'),btn=f.querySelector('button[type=submit]');
-var ids={postcode:'postcode',business:'business',mobile:'mobile',registration:'reg'};
-function show(msg,field){err.textContent=msg;err.classList.add('on');[].forEach.call(f.querySelectorAll('input'),function(i){i.removeAttribute('aria-invalid')});var el=field&&document.getElementById(ids[field]);if(el){el.setAttribute('aria-invalid','true');el.focus()}}
-f.addEventListener('submit',function(e){e.preventDefault();err.classList.remove('on');btn.disabled=true;
-var body={postcode:f.postcode.value,business:f.business.value,mobile:f.mobile.value,registration:f.registration.value,website:f.website.value};
+(function(){var f=document.getElementById('apply-form'),err=document.getElementById('err'),ok=document.getElementById('success'),btn=f.querySelector('button[type=submit]'),share=document.getElementById('share'),link=document.getElementById('share-link'),sbtn=document.getElementById('share-btn');
+var ids={name:'fname',business:'business',mobile:'mobile',email:'email',registration:'reg',postcode:'postcode',support:'support',consent:'consent'};
+function clear(){[].forEach.call(f.querySelectorAll('input'),function(i){i.removeAttribute('aria-invalid')});[].forEach.call(f.querySelectorAll('.fp-tick'),function(t){t.removeAttribute('data-bad')})}
+function show(msg,field){err.textContent=msg;err.classList.add('on');clear();var el=field&&document.getElementById(ids[field]);if(el){el.setAttribute('aria-invalid','true');var t=el.closest('.fp-tick');if(t)t.setAttribute('data-bad','1');el.focus()}else err.scrollIntoView({block:'center',behavior:'smooth'})}
+f.addEventListener('submit',function(e){e.preventDefault();err.classList.remove('on');clear();btn.disabled=true;
+var body={name:f.name.value,business:f.business.value,mobile:f.mobile.value,email:f.email.value,registration:f.registration.value,postcode:f.postcode.value,support:f.support.checked,crew:f.crew.checked,consent:f.consent.checked,ref:REF,website:f.website.value};
 fetch('/api/founders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().catch(function(){return{ok:false,error:'Something went wrong. Please try again.'}})}).then(function(d){btn.disabled=false;
-if(d.ok){f.style.display='none';[].forEach.call(document.querySelectorAll('.fp-card .notice'),function(n){n.style.display='none'});ok.textContent=d.message;ok.classList.add('on');ok.scrollIntoView({block:'center',behavior:'smooth'})}else show(d.error||'Something went wrong. Please try again.',d.field)}).catch(function(){btn.disabled=false;show('We could not reach the server. Check your signal and try again.')})})})();
+if(d.ok){f.style.display='none';[].forEach.call(document.querySelectorAll('.fp-card .notice'),function(n){n.style.display='none'});ok.textContent=d.message;ok.classList.add('on');
+if(d.link){link.value=d.link;share.classList.add('on')}ok.scrollIntoView({block:'center',behavior:'smooth'})}else show(d.error||'Something went wrong. Please try again.',d.field)}).catch(function(){btn.disabled=false;show('We could not reach the server. Check your signal and try again.')})});
+sbtn.addEventListener('click',function(){var url=link.value,text='Founder places for registered waste carriers on CleanUpPic: ';
+if(navigator.share){navigator.share({title:'CleanUpPic founder places',text:text,url:url}).catch(function(){});return}
+link.select();try{navigator.clipboard.writeText(url).then(function(){sbtn.textContent='Copied'},function(){document.execCommand('copy');sbtn.textContent='Copied'})}catch(x){try{document.execCommand('copy');sbtn.textContent='Copied'}catch(y){}}})})();
 </script>
 </body>
 </html>
