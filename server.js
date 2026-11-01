@@ -485,7 +485,7 @@ app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/
 
 // page templates: a skin's own copy (skins/<id>/public/x.html) wins over the shared one; {{TOKENS}} come from the skin
 const SITE_JS = { id: SKIN.id, name: SKIN.name, catPath: CAT, categories: SKIN.categories, allIcon: SKIN.allIcon, soon: SKIN.soon || [], moreSoon: SKIN.moreSoon || [],
-  appName: (SKIN.app || {}).shortName || SKIN.name, trades: !!SKIN.trades, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage, hubOpen: false };
+  appName: (SKIN.app || {}).shortName || SKIN.name, trades: !!SKIN.trades, logoWord: SKIN.logoWord, feedTitle: SKIN.feedTitle, copy: SKIN.copy || {}, quote: SKIN.quote || null, ogImage: SKIN.ogImage, hubOpen: false, quoteWa: (d => { d = d.replace(/^0(\d{9,10})$/, '44$1'); return /^\d{10,15}$/.test(d) ? d : ''; })(String(process.env.QUOTE_WHATSAPP || '').replace(/\D/g, '')) };
 const TOKENS = {
   ID: SKIN.id, NAME: esc(SKIN.name), THEME: SKIN.theme, FONTS: SKIN.fonts, LOGO_WORD: SKIN.logoWord, DESC: esc(SKIN.desc), OG_IMAGE: SKIN.ogImage,
   SEARCH_PH: esc(SKIN.searchPlaceholder), SEARCH_LABEL: esc(SKIN.searchLabel), CHIPS_LABEL: esc(SKIN.chipsLabel), FEED_TITLE: esc(SKIN.feedTitle),

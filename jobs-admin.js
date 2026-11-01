@@ -59,7 +59,13 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
     await reload();
   }
   let ALL = [];
+  // WhatsApp for "Message on WhatsApp": a carrier's own number (businesses.whatsapp); jobs posted by admin (no carrier account)
+  // use the default operator's number, QUOTE_WHATSAPP. UK 07... becomes 447... for wa.me. Empty = no button.
+  const waNum = s => { let d = String(s || '').replace(/\D/g, ''); if (/^0\d{9,10}$/.test(d)) d = '44' + d.slice(1); return /^\d{10,15}$/.test(d) ? d : ''; };
+  let WA_BIZ = new Map();
+  const waFor = r => r.biz_id ? waNum(WA_BIZ.get(r.biz_id)) : waNum(process.env.QUOTE_WHATSAPP);
   const toPublic = r => ({
+    wa: waFor(r),
     slug: r.slug, title: r.title, biz: r.biz, initials: r.initials || initialsOf(r.biz), trade: r.trade,
     description: r.description || '', services: r.services || [], stages: r.stages || [], voice: !!r.voice,
     video: r.video, playVideo: r.play_video || r.video, cover: r.cover, playCover: r.play_cover || r.cover,
@@ -68,6 +74,7 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
   });
   async function reload() {
     ALL = (await pool.query('SELECT * FROM jobs ORDER BY sort DESC, created_at DESC')).rows;
+    try { WA_BIZ = new Map((await pool.query('SELECT id, whatsapp FROM businesses WHERE whatsapp IS NOT NULL')).rows.map(b => [b.id, b.whatsapp])); } catch (e) { WA_BIZ = new Map(); }
     onChange(ALL.filter(r => !r.hidden && r.status === 'ready' && r.approved !== false).map(toPublic));
   }
 

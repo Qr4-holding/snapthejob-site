@@ -32,6 +32,11 @@
       if (navigator.sendBeacon) navigator.sendBeacon('/api/e', body); else fetch('/api/e', { method: 'POST', body, keepalive: true });
     } catch (e) {}
   };
+  // "Message on WhatsApp": opens a chat with the carrier, the job already named, so the enquiry goes straight to their phone
+  const waText = j => `Hi ${j.biz}, I've just watched your "${j.title}" video on ${NAME}. Could you give me a quote for a similar job? (ref ${j.slug})`;
+  const waLink = j => `https://wa.me/${j.wa}?text=${encodeURIComponent(waText(j))}`;
+  window.STJ_WA = { waLink };
+  document.addEventListener('click', e => { const a = e.target.closest('[data-wa]'); if (a) track('whatsapp', { j: a.dataset.wa }); });
   track('view');
   const slugify = t => String(t).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -337,6 +342,7 @@
         </div>
         <button class="bigq disp" type="button" data-waitlist="customer" data-biz="${esc(j.biz)}">Get a quote from ${esc(j.biz)}</button>
         <div class="small" style="text-align:center;margin-top:-8px">Free for you. Takes a minute.</div>
+        ${j.wa ? `<a class="bigwa disp" href="${esc(waLink(j))}" target="_blank" rel="noopener" data-wa="${j.slug}"><span class="wa-ic">${svg('M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z', 20, '#fff')}</span>Message on WhatsApp</a>` : ''}
         <button class="btn bigshare disp" type="button" data-share="/job/${j.slug}" data-title="${esc(j.title)} by ${esc(j.biz)}" data-img="${j.cover}" data-video="${j.video}">${svg(SHARE, 22)}Share this job</button>
         <p class="small" style="margin:0;border-top:1px solid var(--line);padding-top:14px">Posted by ${esc(j.biz)}. ${esc(NAME)} hosts this video; it does not check or vouch for the work.${j.demo ? ' Demo video shown while we launch.' : ''}</p>
       </div>`;
@@ -373,6 +379,7 @@
     </div>
     <div class="vw-rail">
       <button class="vw-act vw-quote" type="button" id="vwQuote" data-waitlist="customer"><span>${svg('M4 5h16v11H8l-4 4z', 24, '#fff')}</span>Get a quote</button>
+      <a class="vw-act vw-wa" id="vwWa" href="#" target="_blank" rel="noopener" hidden><span>${svg('M12 3a9 9 0 00-7.8 13.5L3 21l4.6-1.2A9 9 0 1012 3z', 24, '#fff')}</span>WhatsApp</a>
       <button class="vw-act" type="button" id="vwShare"><span>${svg('M14 5l7 7-7 7M21 12H9a6 6 0 00-6 6', 24, 'currentColor')}</span>Share</button>
     </div>
   </div>
@@ -398,6 +405,7 @@
     $('#vwBiz').href = '/business/' + slugify(j.biz);
     $('#vwTitle').textContent = j.title;
     $('#vwQuote').dataset.biz = j.biz;
+    const wa = $('#vwWa'); wa.hidden = !j.wa; if (j.wa) { wa.href = waLink(j); wa.dataset.wa = j.slug; }
     const s = $('#vwShare'); s.dataset.share = '/job/' + j.slug; s.dataset.title = j.title + ' by ' + j.biz; s.dataset.img = j.cover; s.dataset.video = j.video;
     $('#vwPrev').hidden = $('#vwNext').hidden = list.length < 2;
     vid.play().catch(() => {});

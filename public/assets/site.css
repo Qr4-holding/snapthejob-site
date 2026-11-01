@@ -310,3 +310,12 @@ button{font:inherit}
 .profile h1{margin:0;font-size:26px;line-height:1.15}
 .profile p{margin:4px 0 0}
 .meta .s a{color:inherit;text-decoration:underline;text-decoration-color:var(--line)}
+/* Message on WhatsApp: WhatsApp's own green, white writing, same size as Get a quote */
+.bigwa{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;border-radius:28px;background:#fff;color:var(--ink);border:2px solid #1a9c4a;font-size:19px;text-decoration:none;padding:0 20px;text-align:center}
+.bigwa:hover{background:#eef8f0;color:var(--ink)}
+.bigwa .wa-ic{width:32px;height:32px;border-radius:50%;background:#1a9c4a;display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px}
+.vw-wa>span{background:#1a9c4a;border-color:#1a9c4a}
+.vw-wa:hover>span{background:#15803d}
+.vw-act[hidden]{display:none}
+a.qz-wa{background:#1a9c4a;color:#fff;border-color:#1a9c4a;text-decoration:none;text-align:center}
+a.qz-wa[hidden]{display:none}

@@ -41,6 +41,7 @@
       <span class="tick">${svg('M5 12l5 5 9-10', 36, '#fff', 2.6)}</span>
       <span class="disp" style="font-size:26px">Thanks, that's with us</span>
       <span id="qzDoneText" style="font-size:16px;line-height:1.5"></span>
+      <a class="btn qz-wa" id="qzWa" href="#" target="_blank" rel="noopener" hidden>Or message them on WhatsApp now</a>
       <button class="btn" type="button" data-qclose>Back to the videos</button>
     </div>
   </div>
@@ -150,6 +151,10 @@
       track('quote_sent', { d: st.biz || 'home' });
       $('#qzBody').hidden = true; $('#qzDone').hidden = false;
       $('#qzDoneText').textContent = `${st.biz ? st.biz : 'A local waste team'} will look at your photos and email you a quote. Keep an eye on your inbox, including junk mail.`;
+      // the same carrier's WhatsApp (their job's number, or the default operator for home-page requests), quoting the request's reference
+      const owner = st.biz ? (window.STJ_JOBS || []).find(x => x.biz === st.biz && x.wa) : null, num = owner ? owner.wa : (!st.biz && (window.SITE || {}).quoteWa) || '';
+      const wa = $('#qzWa'); wa.hidden = !num;
+      if (num) { const who = st.biz || 'there'; wa.href = `https://wa.me/${num}?text=${encodeURIComponent(`Hi ${who}, I've just sent a quote request with photos on ${(window.SITE || {}).name || 'CleanUpPic'} (ref ${j.ref}).`)}`; wa.onclick = () => track('whatsapp', { d: st.biz || 'home', ref: j.ref }); }
     } catch (ex) { $('#qzErr').textContent = ex.message; }
     finally { btn.disabled = false; if (!$('#qzBody').hidden) btn.textContent = 'Send for a quote'; }
   }

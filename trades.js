@@ -46,6 +46,7 @@ module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, l
     await pool.query(`CREATE TABLE IF NOT EXISTS biz_sessions (token TEXT PRIMARY KEY, biz_id INT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE, expires TIMESTAMPTZ NOT NULL)`);
     await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS biz_id INT');
     await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT true');
+    await pool.query('ALTER TABLE businesses ADD COLUMN IF NOT EXISTS whatsapp TEXT');
     await pool.query("DELETE FROM biz_sessions WHERE expires < now()").catch(() => {});
     // a render that was cut off by a restart would stay "processing" for ever: mark it failed so the carrier can post again
     await pool.query(`UPDATE jobs SET status='failed', error='The server restarted while the video was being made. Please post it again.' WHERE status='processing' AND biz_id IS NOT NULL AND created_at < now() - interval '20 minutes'`).catch(() => {});
