@@ -74,7 +74,9 @@ module.exports = function setupJobs({ app, pool, auth, sameOrigin, esc, slugify,
   });
   async function reload() {
     ALL = (await pool.query('SELECT * FROM jobs ORDER BY sort DESC, created_at DESC')).rows;
-    try { WA_BIZ = new Map((await pool.query('SELECT id, whatsapp FROM businesses WHERE whatsapp IS NOT NULL')).rows.map(b => [b.id, b.whatsapp])); } catch (e) { WA_BIZ = new Map(); }
+    // a carrier with no number of their own who is the default operator (QUOTE_EMAIL) uses QUOTE_WHATSAPP
+    const opEmail = String(process.env.QUOTE_EMAIL || '').trim().toLowerCase();
+    try { WA_BIZ = new Map((await pool.query('SELECT id, whatsapp, email FROM businesses')).rows.map(b => [b.id, b.whatsapp || (opEmail && String(b.email || '').toLowerCase() === opEmail ? process.env.QUOTE_WHATSAPP : '')]).filter(e => e[1])); } catch (e) { WA_BIZ = new Map(); }
     onChange(ALL.filter(r => !r.hidden && r.status === 'ready' && r.approved !== false).map(toPublic));
   }
 

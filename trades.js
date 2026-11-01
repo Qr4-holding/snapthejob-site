@@ -175,6 +175,12 @@ ${field('Anything else? (optional)', `<textarea name="description" maxlength="30
 <h2 class="disp" style="font-size:22px;margin:22px 0 8px">My ${esc(C.jobWord)}s</h2>
 ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src="${esc(r.cover || '')}" alt=""><div><b>${esc(r.title)}</b><span class="small">${esc(r.trade)} · ${new Date(r.created_at).toLocaleDateString('en-GB')}</span>${statusPill(r)}
 <div class="tjob-a">${r.status === 'ready' && !r.approved ? `<a class="btn" href="${esc(r.play_video || r.video)}" target="_blank" rel="noopener">Watch</a><form method="post" action="/trade/jobs/${r.id}/approve" style="margin:0"><button class="btn btn-red" type="submit">Approve &amp; publish</button></form>` : ''}${r.status === 'ready' && r.approved && !r.hidden ? `<button class="btn btn-red" type="button" data-share="/job/${esc(r.slug)}" data-title="${esc(r.title)} by ${esc(r.biz)}" data-img="${esc(r.cover || '')}" data-video="${esc(r.video || '')}">Share</button><a class="btn" href="/job/${esc(r.slug)}">View</a><a class="btn" href="${esc(r.video)}" download>Save video</a>` : ''}<form method="post" action="/trade/jobs/${r.id}/delete" onsubmit="return confirm('Delete this ${esc(C.jobWord)} and its video?')" style="margin:0"><button class="btn tdel" type="submit">Delete</button></form></div></div></div>`).join('')}</div>` : `<p class="small">Nothing yet. Your first ${esc(C.jobWord)} will appear here.</p>`}
+<section class="tpost" id="wa" style="margin-top:22px">
+<h2 class="disp" style="font-size:22px;margin:0 0 4px">WhatsApp for customers</h2>
+<p class="small" style="margin:0 0 10px">${biz.whatsapp ? `Customers see <b>Message on WhatsApp</b> on your ${esc(C.jobWord)}s and it opens a chat with <b>${esc(biz.whatsapp)}</b>.` : `Add the mobile you use for WhatsApp Business and customers get a <b>Message on WhatsApp</b> button on your ${esc(C.jobWord)}s. Leave it empty for no button.`}</p>
+<form method="post" action="/trade/whatsapp" class="tform" style="gap:8px"><label class="f">WhatsApp number<input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="07..." value="${esc(biz.whatsapp || '')}"></label>
+<button class="btn btn-red" type="submit" style="align-self:flex-start">Save</button></form>
+</section>
 <script>
 (function(){
   document.querySelectorAll('.shot input').forEach(function(i){ i.addEventListener('change', function(){ var f=i.files[0], img=i.parentNode.querySelector('img'), h=i.parentNode.querySelector('.shot-h'); if(!f) return; img.src=URL.createObjectURL(f); img.hidden=false; h.textContent='Change'; i.parentNode.classList.add('has'); }); });
@@ -257,8 +263,8 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
     const biz = await current(req);
     if (!biz) return res.redirect(302, '/trade');
     const jobs = (await pool.query('SELECT * FROM jobs WHERE biz_id=$1 ORDER BY created_at DESC', [biz.id])).rows;
-    const msg = { welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). You can post the next job straight away; they are made one after the other. Then watch each one and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Share to post it on Facebook, WhatsApp, Instagram, TikTok and more.` }[req.query.m] || '';
-    const bad = { bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
+    const msg = { wa: 'Saved. Your Message on WhatsApp button is live.', waoff: 'WhatsApp button removed.', welcome: `Welcome to ${SKIN.name}. Post your first ${C.jobWord} below.`, posted: `Got it. Your video is being made now (a minute or two; this page updates by itself). You can post the next job straight away; they are made one after the other. Then watch each one and tap Approve & publish.`, deleted: 'Deleted.', live: `Published. It's live on ${SKIN.name} now. Tap Share to post it on Facebook, WhatsApp, Instagram, TikTok and more.` }[req.query.m] || '';
+    const bad = { wabad: 'That WhatsApp number does not look right. Use a UK mobile like 07700 900123.', bad: 'Please add a before photo, an after photo, a title and tick the box.', big: 'One of the photos is too large (25 MB max).' }[req.query.m] || '';
     res.set('Cache-Control', 'no-store').send(jobsPage(biz, jobs, msg, bad));
   } catch (e) { next(e); } });
 
@@ -318,6 +324,17 @@ Reply with the script only, no quotes or headings.` });
       res.json({ script: script.trim().replace(/^["“]|["”]$/g, '').slice(0, 400) });
     } catch (e) { console.error('Script failed', e.message); res.status(500).json({ error: 'Something went wrong. Type your own script instead.' }); }
   });
+
+  app.post('/trade/whatsapp', sameOrigin, form, async (req, res, next) => { try {
+    const biz = await current(req);
+    if (!biz) return res.redirect(302, '/trade');
+    let raw = String((req.body || {}).whatsapp || '').trim().slice(0, 30), d = raw.replace(/\D/g, '');
+    if (/^0\d{9,10}$/.test(d)) d = '44' + d.slice(1);
+    if (raw && !/^\d{10,15}$/.test(d)) return res.redirect(303, '/trade/jobs?m=wabad#wa');
+    await pool.query('UPDATE businesses SET whatsapp=$1 WHERE id=$2', [raw || null, biz.id]);
+    await reloadJobs();
+    res.redirect(303, '/trade/jobs?m=' + (raw ? 'wa' : 'waoff') + '#wa');
+  } catch (e) { next(e); } });
 
   app.post('/trade/jobs/:id/approve', sameOrigin, async (req, res, next) => { try {
     const biz = await current(req);
