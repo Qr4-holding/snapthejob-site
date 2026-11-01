@@ -590,7 +590,7 @@ app.get('/sitemap.xml', (req, res) => {
 });
 
 // ---------- trades / waste carriers: sign in, post a job from photos, my jobs ----------
-const trades = SKIN.trades ? require('./trades')({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs: () => jobsAdmin.reload(), sendPush, page, tpl, auth }) : null;
+const trades = SKIN.trades ? require('./trades')({ hubOpen: () => HUB_OPEN, app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs: () => jobsAdmin.reload(), sendPush, page, tpl, auth }) : null;
 
 // ---------- static site ----------
 const sendPage = name => (req, res) => res.set('Cache-Control', 'no-cache').send(page(tpl[name], {

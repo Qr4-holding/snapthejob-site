@@ -20,7 +20,7 @@ let ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 let ELEVEN_KEY = process.env.ELEVENLABS_API_KEY || '';
 const SCRIPT_MODEL = process.env.SCRIPT_MODEL || 'claude-haiku-5-5';
 
-module.exports = function setupTrades({ app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs, sendPush, page, tpl, auth }) {
+module.exports = function setupTrades({ hubOpen, app, pool, esc, slugify, SKIN, TRADES, limited, reloadJobs, sendPush, page, tpl, auth }) {
   for (const d of [JOB_DIR, WORK_DIR]) { try { fs.mkdirSync(d, { recursive: true }); } catch (e) {} }
   const C = Object.assign({ iAm: "I'm a trade", noun: 'trade', nounCap: 'Trade', catLabel: 'Trade', jobWord: 'job' }, SKIN.tradeCopy || {});
   const clean = (v, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -225,6 +225,18 @@ ${jobs.length ? `<div class="tjobs">${jobs.map(r => `<div class="tjob"><img src=
 </script>`);
 
   // ---------- routes ----------
+  // Posting is closed until launch: while the clear-ups directory (HUB_OPEN) is off, every /trade page shows "coming soon"
+  // and nothing can be signed up, signed in or posted. Opening the directory in /admin opens posting too.
+  const closedPage = () => wrap('Coming soon', `<section class="tpost" style="text-align:center;padding:28px 18px">
+<h1 class="disp" style="font-size:28px;margin:0 0 8px">Posting is coming soon</h1>
+<p style="margin:0 0 16px">${esc(C.nounCap)} accounts open when ${esc(SKIN.name)} launches. Want to be one of the first?</p>
+<a class="btn btn-red" href="/">Join the founders list</a></section>`);
+  app.use('/trade', (req, res, next) => {
+    if (!hubOpen || hubOpen()) return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return res.redirect(303, '/trade');
+    res.status(200).set('Cache-Control', 'no-store').send(closedPage());
+  });
+
   app.get('/trade', async (req, res, next) => { try {
     if (await current(req)) return res.redirect(302, '/trade/jobs');
     res.set('Cache-Control', 'no-store').send(signInPage(req.query.m === 'bye' ? 'Signed out.' : '', req.query.new ? 'new' : 'in'));
@@ -454,18 +466,27 @@ ${msg ? `<p class="ok">${esc(msg)}</p>` : ''}${bad ? `<p class="bad">${esc(bad)}
     // /admin/carriers: the owner sees every carrier account and can set the WhatsApp number used for their Message on WhatsApp button
     app.get('/admin/carriers', auth, async (req, res, next) => { try {
       const rows = (await pool.query(`SELECT b.id, b.name, b.email, b.trade, b.town, b.whatsapp, b.last_seen, b.status, (SELECT count(*) FROM jobs j WHERE j.biz_id=b.id)::int AS jobs FROM businesses b ORDER BY b.last_seen DESC NULLS LAST, b.id`)).rows;
-      const flash = { saved: 'Saved. The job pages use the new number now.', bad: 'That number does not look right. Use a UK mobile like 07700 900123.' }[req.query.m] || '';
+      const flash = { deleted: 'Account deleted. Its jobs are kept and can be edited in Jobs.', saved: 'Saved. The job pages use the new number now.', bad: 'That number does not look right. Use a UK mobile like 07700 900123.' }[req.query.m] || '';
       const op = String(process.env.QUOTE_EMAIL || '').toLowerCase();
       const card = b => `<div style="border:1px solid #DCDDD8;border-radius:14px;padding:14px;margin:0 0 12px;background:#fff">
 <b style="font-size:17px">${esc(b.name)}</b><div style="color:#5d6066;font-size:14px;margin:2px 0 10px;overflow-wrap:anywhere">${esc(b.email)} · ${esc(b.trade || '')}${b.town ? ' · ' + esc(b.town) : ''} · ${b.jobs} job${b.jobs === 1 ? '' : 's'}${b.last_seen ? ' · last in ' + new Date(b.last_seen).toLocaleDateString('en-GB') : ''}${b.status !== 'active' ? ' · ' + esc(b.status) : ''}</div>
 <form method="post" action="/admin/carriers/${b.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:0"><label style="flex:1 1 180px;font-weight:600;font-size:14px">WhatsApp<input name="whatsapp" type="tel" value="${esc(b.whatsapp || '')}" placeholder="${!b.whatsapp && op && String(b.email || '').toLowerCase() === op && process.env.QUOTE_WHATSAPP ? esc(process.env.QUOTE_WHATSAPP) + ' (default)' : 'None: no button'}" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border:1px solid #C9CBC5;border-radius:10px;font:inherit"></label>
-<button type="submit" style="padding:10px 18px;border:0;border-radius:20px;background:#1F2124;color:#fff;font:inherit;font-weight:600">Save</button></form></div>`;
+<button type="submit" style="padding:10px 18px;border:0;border-radius:20px;background:#1F2124;color:#fff;font:inherit;font-weight:600">Save</button></form>
+<form method="post" action="/admin/carriers/${b.id}/delete" onsubmit="return confirm('Delete the account ${esc(b.name).replace(/'/g, '')} (${esc(b.email)})? Its jobs stay on the site.')" style="margin:10px 0 0"><button type="submit" style="padding:8px 14px;border:1px solid #C9CBC5;border-radius:18px;background:#fff;color:#B42318;font:inherit;font-size:14px">Delete account</button></form></div>`;
       res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Carriers · admin</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:16px;background:#F6F6F3;color:#1F2124">
 <p style="margin:0 0 10px"><a href="/admin" style="color:#1F2124">← Admin</a></p><h1 style="margin:0 0 6px">Carriers</h1>
 <p style="color:#5d6066;margin:0 0 14px">Each carrier's WhatsApp number puts a <b>Message on WhatsApp</b> button on their jobs. Carriers can also set it themselves when signed in.</p>
 ${flash ? `<p style="background:#E9F7EE;border-radius:10px;padding:10px 12px">${esc(flash)}</p>` : ''}
 ${rows.map(card).join('') || '<p>No carrier accounts yet.</p>'}</body></html>`);
+    } catch (e) { next(e); } });
+    // delete a carrier account: their jobs stay (as admin jobs with no account), sessions go with the account
+    app.post('/admin/carriers/:id/delete', auth, sameOrigin, async (req, res, next) => { try {
+      const id = parseInt(req.params.id, 10) || 0;
+      await pool.query('UPDATE jobs SET biz_id=NULL WHERE biz_id=$1', [id]);
+      await pool.query('DELETE FROM businesses WHERE id=$1', [id]);
+      await reloadJobs();
+      res.redirect(303, '/admin/carriers?m=deleted');
     } catch (e) { next(e); } });
     app.post('/admin/carriers/:id', auth, sameOrigin, require('express').urlencoded({ extended: false, limit: '2kb' }), async (req, res, next) => { try {
       let raw = String((req.body || {}).whatsapp || '').trim().slice(0, 30), d = raw.replace(/\D/g, '');
