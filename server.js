@@ -479,7 +479,7 @@ const CAT = SKIN.catPath || 'trades';
 let jobsJs = 'window.STJ_JOBS = [];';
 const jobsAdmin = require('./jobs-admin')({ app, pool, auth, sameOrigin, esc, slugify, sendPush, TRADES, SKIN, approveJob: id => trades && trades.approve(id),
   onChange: list => { JOBS = list; } });
-const quotes = SKIN.quote ? require('./quotes')({ app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS, ORIGIN }) : null;
+const quotes = SKIN.quote ? require('./quotes')({ hubOpen: () => HUB_OPEN, app, pool, auth, sameOrigin, esc, SKIN, limited, getJobs: () => JOBS, ORIGIN }) : null;
 const founders = SKIN.founders ? require('./founders')({ app, pool, auth, sameOrigin, esc, SKIN, limited, ORIGIN, express, brand: h => gate(brand(h)), getJobs: () => JOBS, hubOpen: () => HUB_OPEN, noindex: NOINDEX }) : null;
 app.get('/assets/jobs.js', (req, res) => res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }).send('window.STJ_JOBS = ' + JSON.stringify(shown()).replace(/</g, '\\u003c') + ';'));
 

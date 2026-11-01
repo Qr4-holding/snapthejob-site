@@ -20,7 +20,6 @@ Per skin: `skin.json` → optional `"app": { "name", "shortName", "benefits": [.
 1. Copy `skins/cleanupsnap` to `skins/<id>`; edit `skin.json` (name, theme, fonts, categories, quote wording, app) and `public/assets/skin.css`.
 2. Make icons with `tools/make-icons.js`.
 3. New Docker project from `deploy/` with `SKIN=<id>` and its own domain labels.
-`skins/ekp11` is the EKP 11 Waste Management version (preview only, not deployed).
 
 ## Carrier / trade area (`"trades": true` in the skin)
 `/trade` sign in or create account (cookie on their phone, 180 days). `/trade/jobs`: Post a job (before, optional during, after photos from camera or gallery) and My jobs.
@@ -31,7 +30,7 @@ Until `HUB_OPEN` is turned on in /admin (Switch-over box; env `HUB_OPEN=1` is on
 
 ## Founders page (`"founders": true` in the skin; cleanuppic only)
 `/founders` (noindex until approved): the founder-places sales page, built from `founders/page.html` (approved mock: `founders/mock.html`).
-- Page: the hub's own shell (hub fonts, site.css/skin.css, header, footer, quote flow, video player). Videos: `founders/assets/real-job-fence-ekp11.mp4` (hero) and `what-your-phone-does.mp4`, served at `/founders/media/`; posters in `public/founders/`. "Latest clear-ups" are the four newest jobs from the hub's job list, or from `FOUNDERS_FEED_URL` (e.g. `https://cleanuppic.co.uk/assets/jobs.js`) on a preview with its own empty database.
+- Page: the hub's own shell (hub fonts, site.css/skin.css, header, footer, quote flow, video player). Videos: `founders/assets/real-job-fence.mp4` (hero) and `what-your-phone-does.mp4`, served at `/founders/media/`; posters in `public/founders/`. "Latest clear-ups" are the four newest jobs from the hub's job list, or from `FOUNDERS_FEED_URL` (e.g. `https://cleanuppic.co.uk/assets/jobs.js`) on a preview with its own empty database.
 - Form → `POST /api/founders`: UK postcode, business name, UK mobile, carrier registration. Must be CBDU + 6 numbers, found on the Environment Agency register (`ea.js`), upper tier, not expired. Saved to the `founders` table with a place per postcode district (10 per district; after that a waiting-list number). An email goes to `hello@cleanuppic.co.uk` (`FOUNDERS_EMAIL` to change) through `mail.js`.
 - Admin: `/admin/founders` lists applications by area with the count per area.
 - Tests: `DATABASE_URL=postgres://… node test/founders.js` (the register is faked so tiers, expiry, unknown numbers and a register outage can all be tested).

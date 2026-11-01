@@ -11,7 +11,7 @@ const mail = require('./mail');
 const QUOTE_DIR = process.env.QUOTE_DIR || '/data/quotes';
 const STATUSES = ['New', 'Sent to operator', 'Quoted', 'Won', 'Closed'];
 
-module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, getJobs, limited, ORIGIN }) {
+module.exports = function setupQuotes({ hubOpen, app, pool, auth, sameOrigin, esc, SKIN, getJobs, limited, ORIGIN }) {
   const Q = SKIN.quote;
   try { fs.mkdirSync(path.join(QUOTE_DIR, 'tmp'), { recursive: true }); } catch (e) {}
   const upload = multer({
@@ -79,6 +79,7 @@ module.exports = function setupQuotes({ app, pool, auth, sameOrigin, esc, SKIN, 
   }
 
   app.post('/api/quote', (req, res, next) => {
+    if (hubOpen && !hubOpen()) return res.status(403).json({ ok: false, error: 'Quotes are not open yet.' });
     if (limited(req.ip)) return res.status(429).json({ ok: false, error: 'Too many tries. Please try again later.' });
     next();
   }, (req, res, next) => upload.array('photos', Q.maxPhotos || 6)(req, res, err => {

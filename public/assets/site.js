@@ -73,7 +73,7 @@
         <select name="gallery"><option value="">Choose…</option><option>None yet</option><option>1–10</option><option>11–50</option><option>50+</option></select>
       </label>
       <label class="f" data-for="customer">What job do you need doing? <span style="font-weight:400;color:#5E6168">(optional)</span>
-        <textarea name="job" placeholder="For example: clear a garage, or re-skim a bedroom ceiling"></textarea>
+        <textarea name="job" placeholder="${esc(C.jobPlaceholder || 'For example: clear a garage, or re-skim a bedroom ceiling')}"></textarea>
       </label>
       <label class="consent"><input type="checkbox" name="consent"><span id="wlConsent"></span></label>
       <div class="err" id="wlErr" role="alert"></div>
@@ -106,10 +106,10 @@
       $('#wlDoneText').textContent = "We'll email you when your early access is ready.";
       if (opts.trade) form.trade.value = opts.trade;
     } else {
-      $('#wlTitle').textContent = opts.biz ? `Quotes from ${opts.biz} are coming soon` : 'Get up to 3 quotes: coming soon';
+      $('#wlTitle').textContent = opts.biz ? `Quotes from ${opts.biz} are coming soon` : (C.quoteSoonTitle || 'Get up to 3 quotes: coming soon');
       $('#wlIntro').textContent = opts.biz
         ? `We're switching on Get a quote very soon. Join the waiting list and we'll email you the moment you can ask ${opts.biz} for a quote.`
-        : "Soon you'll be able to describe your job once and get up to 3 quotes from local trades. Join the waiting list and we'll email you when it's live.";
+        : (C.quoteSoonIntro || "Soon you'll be able to describe your job once and get up to 3 quotes from local trades. Join the waiting list and we'll email you when it's live.");
       $('#wlConsent').textContent = 'Email me when quotes go live. I can unsubscribe at any time.';
       $('#wlDoneText').textContent = "We'll email you as soon as quotes are switched on.";
     }
@@ -161,6 +161,8 @@
     if (!t) return;
     e.preventDefault();
     // skins with a real quote flow (e.g. Snap your rubbish) take over the customer button
+    // before launch (directory closed) quotes are not taken: the customer button opens the "coming soon" waiting list, naming no business
+    if (t.dataset.waitlist === 'customer' && !OPEN) return openWaitlist('customer', {});
     if (t.dataset.waitlist === 'customer' && typeof window.openQuote === 'function') return window.openQuote({ biz: t.dataset.biz, brenda: 'brenda' in t.dataset });
     openWaitlist(t.dataset.waitlist, { biz: t.dataset.biz, trade: t.dataset.trade });
   });

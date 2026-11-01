@@ -94,7 +94,10 @@
   "galleryLabel": "How many old before/after clear-ups are on your phone?",
   "shareTag": " · before and after on CleanUpPic",
   "hashtags": "#BeforeAndAfter #CleanUpPic",
-  "jobWord": "job"
+  "jobWord": "job",
+  "quoteSoonTitle": "Quotes are coming soon",
+  "quoteSoonIntro": "Soon you'll be able to snap your rubbish and get a quote from a local licensed waste team. Join the waiting list and we'll email you when it's live.",
+  "jobPlaceholder": "For example: clear a garage, or take away an old sofa"
  },
  "quote": {
   "intro": "Hiya, I'm Brenda. Snap your rubbish, answer a few quick questions, and I'll pass it to a local licensed waste team for a quote.",
@@ -131,7 +134,6 @@
    "One-off",
    "Regular collections"
   ],
-  "defaultOperator": "EKP11 Waste Management",
   "photoDays": 90
  },
  "admin": {

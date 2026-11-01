@@ -374,7 +374,7 @@ Reply with the script only, no quotes or headings.` });
     renderChain = renderChain.then(() => render(id, job)).catch(e => console.error('Render failed', e.message)).finally(() => { const i = renderQueue.indexOf(id); if (i >= 0) renderQueue.splice(i, 1); });
   }
   // ---------- rendering: photos -> job.json -> video/engine.py -> social + site videos and covers ----------
-  // How a business name is SAID: initials spelt out and digits one at a time ("EKP 11" -> "E K P one one"),
+  // How a business name is SAID: initials spelt out and digits one at a time ("AB 12" -> "A B one two"),
   // so the voice never turns a name into a number. Captions and the site keep the written name.
   const DIGIT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   function spokenName(name) {

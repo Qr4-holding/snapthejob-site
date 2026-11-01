@@ -48,6 +48,8 @@
 </div>`);
 
   const ov = $('#qz');
+  // links inside the form (Privacy, terms) open in a new tab, so the photos and answers already given are not lost
+  ov.addEventListener('click', e => { const a = e.target.closest('a[href]'); if (a && !a.target && a.getAttribute('href').charAt(0) !== '#') { a.target = '_blank'; a.rel = 'noopener'; } }, true);
   let st, lastFocus = null;
   const blank = () => ({ step: 0, biz: '', photos: [], type: [], size: '', access: '', who: '', freq: '', name: '', email: '', phone: '', postcode: '', notes: '', hazOk: false, beforeOk: false, consent: false, website: '' });
 
