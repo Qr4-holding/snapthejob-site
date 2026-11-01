@@ -451,6 +451,30 @@ ${msg ? `<p class="ok">${esc(msg)}</p>` : ''}${bad ? `<p class="bad">${esc(bad)}
 <p class="n">Only voices marked ready are offered to carriers.</p>
 </body></html>`;
   if (auth) {
+    // /admin/carriers: the owner sees every carrier account and can set the WhatsApp number used for their Message on WhatsApp button
+    app.get('/admin/carriers', auth, async (req, res, next) => { try {
+      const rows = (await pool.query(`SELECT b.id, b.name, b.email, b.trade, b.town, b.whatsapp, b.last_seen, b.status, (SELECT count(*) FROM jobs j WHERE j.biz_id=b.id)::int AS jobs FROM businesses b ORDER BY b.last_seen DESC NULLS LAST, b.id`)).rows;
+      const flash = { saved: 'Saved. The job pages use the new number now.', bad: 'That number does not look right. Use a UK mobile like 07700 900123.' }[req.query.m] || '';
+      const op = String(process.env.QUOTE_EMAIL || '').toLowerCase();
+      const card = b => `<div style="border:1px solid #DCDDD8;border-radius:14px;padding:14px;margin:0 0 12px;background:#fff">
+<b style="font-size:17px">${esc(b.name)}</b><div style="color:#5d6066;font-size:14px;margin:2px 0 10px;overflow-wrap:anywhere">${esc(b.email)} · ${esc(b.trade || '')}${b.town ? ' · ' + esc(b.town) : ''} · ${b.jobs} job${b.jobs === 1 ? '' : 's'}${b.last_seen ? ' · last in ' + new Date(b.last_seen).toLocaleDateString('en-GB') : ''}${b.status !== 'active' ? ' · ' + esc(b.status) : ''}</div>
+<form method="post" action="/admin/carriers/${b.id}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:0"><label style="flex:1 1 180px;font-weight:600;font-size:14px">WhatsApp<input name="whatsapp" type="tel" value="${esc(b.whatsapp || '')}" placeholder="${!b.whatsapp && op && String(b.email || '').toLowerCase() === op && process.env.QUOTE_WHATSAPP ? esc(process.env.QUOTE_WHATSAPP) + ' (default)' : 'None: no button'}" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px;border:1px solid #C9CBC5;border-radius:10px;font:inherit"></label>
+<button type="submit" style="padding:10px 18px;border:0;border-radius:20px;background:#1F2124;color:#fff;font:inherit;font-weight:600">Save</button></form></div>`;
+      res.set('Cache-Control', 'no-store').send(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Carriers · admin</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:16px;background:#F6F6F3;color:#1F2124">
+<p style="margin:0 0 10px"><a href="/admin" style="color:#1F2124">← Admin</a></p><h1 style="margin:0 0 6px">Carriers</h1>
+<p style="color:#5d6066;margin:0 0 14px">Each carrier's WhatsApp number puts a <b>Message on WhatsApp</b> button on their jobs. Carriers can also set it themselves when signed in.</p>
+${flash ? `<p style="background:#E9F7EE;border-radius:10px;padding:10px 12px">${esc(flash)}</p>` : ''}
+${rows.map(card).join('') || '<p>No carrier accounts yet.</p>'}</body></html>`);
+    } catch (e) { next(e); } });
+    app.post('/admin/carriers/:id', auth, sameOrigin, require('express').urlencoded({ extended: false, limit: '2kb' }), async (req, res, next) => { try {
+      let raw = String((req.body || {}).whatsapp || '').trim().slice(0, 30), d = raw.replace(/\D/g, '');
+      if (/^0\d{9,10}$/.test(d)) d = '44' + d.slice(1);
+      if (raw && !/^\d{10,15}$/.test(d)) return res.redirect(303, '/admin/carriers?m=bad');
+      await pool.query('UPDATE businesses SET whatsapp=$1 WHERE id=$2', [raw || null, parseInt(req.params.id, 10) || 0]);
+      await reloadJobs();
+      res.redirect(303, '/admin/carriers?m=saved');
+    } catch (e) { next(e); } });
     app.get('/admin/ai', auth, (req, res) => res.set('Cache-Control', 'no-store').send(aiPage({ saved: 'Saved.' }[req.query.m] || '')));
     app.post('/admin/ai', auth, sameOrigin, require('express').urlencoded({ extended: false, limit: '4kb' }), async (req, res, next) => { try {
       const b = req.body || {};
