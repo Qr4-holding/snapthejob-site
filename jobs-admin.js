@@ -298,5 +298,5 @@ ${pickerScript}`, req.query.m === 'saved' ? (r.status === 'processing' ? 'Saved.
     res.redirect(303, '/admin/jobs?m=deleted');
   } catch (e) { next(e); } });
 
-  return { init, reload };
+  return { init, reload, processVideo, removeFile, uniqueSlug };
 };

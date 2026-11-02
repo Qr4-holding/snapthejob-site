@@ -11,6 +11,9 @@ One codebase, several brands ("skins"). The `SKIN` setting picks `skins/<id>/ski
 
 Add a brand: copy a skin folder, change `skin.json`, add a compose file with `SKIN=<id>` and its own domain.
 
+## Connected apps
+`apps.js`, `legal/carrier-terms.md`. A client's own app publishes here server to server with its own key (`/admin/apps`). Publishing is refused while HUB_OPEN is off.
+
 ## Get the app (install to home screen)
 Every skin gets `/app` automatically: a one-tap Install button on Android and computers, step-by-step Add to Home Screen on iPhone, a QR code on computers, and a small "Get the app" bar for phone visitors (from their 3rd page, dismissible for 30 days). Installs and home-screen opens show in admin stats.
 Per skin: `skin.json` → optional `"app": { "name", "shortName", "benefits": [...] }`; icons in `skins/<id>/public/assets/` made with
